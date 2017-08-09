@@ -98,20 +98,17 @@ def print_debug(string):
     if debug:
         print_debug(string)
 
-def load_palette(filepath, pixel_type, brightness_adjust):
+def load_palette(filepath, brightness_adjust):
     with open(filepath, 'rb') as file:
         colors_byte = struct.unpack('<768B', file.read(768))
+        colors = [float(c)/255.0 for c in colors_byte]
 
         # adjust palette brightness
-        brightness_int = int(brightness_adjust * 255.0)
-        if brightness_int != 0:
-            colors_byte = [max(0, min(c + brightness_int, 255)) for c in colors_byte]
+        if brightness_adjust != 0.0:
+            colors = [max(0.0, min(c + brightness_adjust, 1.0)) for c in colors]
 
-        if(pixel_type == 'BYTE'):
-            return colors_byte
-        else:
-            colors_float = [float(c)/255.0 for c in colors_byte]
-            return colors_float
+        return colors
+
 
 def load_textures(context, filepath, brightness_adjust):
     with open(filepath, 'rb') as file:
@@ -126,7 +123,7 @@ def load_textures(context, filepath, brightness_adjust):
 
         # load the palette colours (will be converted to RGB float format)
         script_path = os.path.dirname(os.path.abspath(__file__)) + "/"
-        colors = load_palette(script_path + "palette.lmp", "FLOAT", brightness_adjust)
+        colors = load_palette(script_path + "palette.lmp", brightness_adjust)
 
         # return a list of texture information and image data
         # entry format: dict(name, width, height, image)
