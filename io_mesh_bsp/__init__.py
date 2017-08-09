@@ -19,10 +19,10 @@
 bl_info = {
     "name": "Import Quake BSP format",
     "author": "Andrew Palmer", #Ian Cunningham (0.0.5),
-    "version": (0, 0, 6),
+    "version": (0, 0, 7),
     "blender": (2, 75, 0),
     "location": "File > Import > Quake BSP (.bsp)",
-    "description": "This script imports the polygon geometry from a Quake 1 BSP file.",
+    "description": "This script imports geometry and materials from a Quake 1 BSP file.",
     "category": "Import-Export"
 }
 
@@ -58,6 +58,13 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
             default=True,
             )
 
+    brightness_adjust = FloatProperty(
+            name="Texture Brightness",
+            description="Adjust the brightness of imported textures.",
+            min=-1.0, max=1.0,
+            default=0.0,
+            )
+
     worldspawn_only = BoolProperty(
             name="Worldspawn only",
             description="Import only the worldspawn entity and ignore other models.",
@@ -88,6 +95,7 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
         options = {
                 'scale' : self.scale,
                 'create_materials' : self.create_materials,
+                'brightness_adjust' : self.brightness_adjust,
                 'worldspawn_only': self.worldspawn_only,
                 'use cycles': self.use_cycles,
                 'create lamps': self.create_lamps,

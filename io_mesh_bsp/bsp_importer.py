@@ -98,16 +98,22 @@ def print_debug(string):
     if debug:
         print_debug(string)
 
-def load_palette(filepath, pixel_type):
+def load_palette(filepath, pixel_type, brightness_adjust):
     with open(filepath, 'rb') as file:
         colors_byte = struct.unpack('<768B', file.read(768))
+
+        # adjust palette brightness
+        brightness_int = int(brightness_adjust * 255.0)
+        if brightness_int != 0:
+            colors_byte = [max(0, min(c + brightness_int, 255)) for c in colors_byte]
+
         if(pixel_type == 'BYTE'):
             return colors_byte
         else:
             colors_float = [float(c)/255.0 for c in colors_byte]
             return colors_float
 
-def load_textures(context, filepath):
+def load_textures(context, filepath, brightness_adjust):
     with open(filepath, 'rb') as file:
         # read file header
         header_data = file.read(struct.calcsize(fmt_BSPHeader))
@@ -120,7 +126,7 @@ def load_textures(context, filepath):
 
         # load the palette colours (will be converted to RGB float format)
         script_path = os.path.dirname(os.path.abspath(__file__)) + "/"
-        colors = load_palette(script_path + "palette.lmp", "FLOAT")
+        colors = load_palette(script_path + "palette.lmp", "FLOAT", brightness_adjust)
 
         # return a list of texture information and image data
         # entry format: dict(name, width, height, image)
@@ -250,7 +256,7 @@ def import_bsp(context, filepath, options):
 
     # load texture data (name, width, height, image)
     print_debug("-- LOADING TEXTURES --")
-    texture_data = load_textures(context, filepath)
+    texture_data = load_textures(context, filepath, options['brightness_adjust'])
     if options['create_materials']:
         if options['use cycles']:
             bpy.context.scene.render.engine = 'CYCLES'
