@@ -204,7 +204,7 @@ def create_materials(texture_data, options):
     for texture in texture_data:
         name = texture['name']
         image = texture['image']
-        if image == 0 or (options['import_nonvisible'] is False and name in ignored_texnames):
+        if image == 0 or (options['remove_hidden'] is True and name in ignored_texnames):
             continue
         
         # pack image data in .blend
@@ -311,7 +311,7 @@ def import_bsp(context, filepath, options):
             texture_specs = texture_data[texinfo.texture_id]
             texture_name = texture_specs['name']
             # skip faces that use ignored textures
-            if options['import_nonvisible'] is False and texture_name in ignored_texnames:
+            if options['remove_hidden'] is True and texture_name in ignored_texnames:
                 continue
 
             texS = texinfo[0:3]
@@ -381,6 +381,13 @@ def import_bsp(context, filepath, options):
         bmesh.update_edit_mesh(obj.data)
 
     bpy.ops.object.mode_set(mode='OBJECT')
+
+    # delete mesh objects with no faces
+    bpy.ops.object.select_all(action='DESELECT')
+    objects = (obj for obj in context.scene.objects if obj.type == 'MESH' and len(obj.data.polygons) == 0)
+    for obj in objects:
+        obj.select_set(True)
+    bpy.ops.object.delete()
 
     # add lights and other camera from the entities text
     # lights = []

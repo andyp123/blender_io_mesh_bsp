@@ -59,10 +59,10 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
             default=True,
             )
 
-    import_nonvisible: BoolProperty(
-            name="Import Non-visible",
-            description="Import non-visible geometry, such as triggers and clip brushes.",
-            default=False,
+    remove_hidden: BoolProperty(
+            name="Remove Hidden",
+            description="Remove hidden geometry, such as triggers",
+            default=True,
             )
 
     brightness_adjust: FloatProperty(
@@ -96,7 +96,7 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
         options = {
                 'scale' : self.scale,
                 'create_materials' : self.create_materials,
-                'import_nonvisible' : self.import_nonvisible,
+                'remove_hidden' : self.remove_hidden,
                 'brightness_adjust' : self.brightness_adjust,
                 'worldspawn_only': self.worldspawn_only,
                 'create lamps': self.create_lamps,
