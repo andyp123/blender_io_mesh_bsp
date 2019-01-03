@@ -56,6 +56,12 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
     create_materials: BoolProperty(
             name="Create materials",
             description="Import textures from the BSP as materials.",
+            default=True,
+            )
+
+    import_nonvisible: BoolProperty(
+            name="Import Non-visible",
+            description="Import non-visible geometry, such as triggers and clip brushes.",
             default=False,
             )
 
@@ -90,6 +96,7 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
         options = {
                 'scale' : self.scale,
                 'create_materials' : self.create_materials,
+                'import_nonvisible' : self.import_nonvisible,
                 'brightness_adjust' : self.brightness_adjust,
                 'worldspawn_only': self.worldspawn_only,
                 'create lamps': self.create_lamps,
