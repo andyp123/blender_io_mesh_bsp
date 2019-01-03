@@ -179,8 +179,8 @@ def load_textures(context, filepath, brightness_adjust):
         return texture_data
 
 def mesh_add(mesh_id):
-    # if bpy.context.scene.objects.active:
-    #     bpy.ops.object.mode_set(mode='OBJECT')
+    if bpy.context.active_object:
+        bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.add(type='MESH', enter_editmode=True)
     obj = bpy.context.object
     obj.name = "bsp_model_%d" % mesh_id
