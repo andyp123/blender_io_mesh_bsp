@@ -91,6 +91,17 @@ fmt_BSPTexInfo = '<8f2I'
 BSPMipTex = namedtuple('BSPMipTex', 'name, width, height, ofs1, ofs2, ofs4, ofs8')
 fmt_BSPMipTex = '<16s6I'
 
+# surfaces with these textures will be ignored
+ignored_texnames = (
+    "clip",
+    "trigger",
+    "hint",
+    "skip",
+    "waterskip",
+    "lavaskip",
+    "slimeskip",
+    "hintskip",
+)
 
 # functions
 def print_debug(string):
@@ -193,7 +204,7 @@ def create_materials(texture_data, options):
     for texture in texture_data:
         name = texture['name']
         image = texture['image']
-        if image == 0:
+        if image == 0 or name in ignored_texnames:
             continue
         
         # pack image data in .blend
@@ -204,19 +215,16 @@ def create_materials(texture_data, options):
         texture.use_alpha = False
         # create material
         mat = bpy.data.materials.new(name)
-        if options['use cycles']:
-            mat.use_nodes = True
-            ntree = mat.node_tree
-            imageNode = ntree.nodes.new('ShaderNodeTexImage')
-            imageNode.image = image
-            ntree.links.new(imageNode.outputs['Color'], ntree.nodes['Diffuse BSDF'].inputs['Color'])
-        mat.diffuse_intensity = 1.0
-        mat.specular_intensity = 0.0
         mat.preview_render_type = 'CUBE'
-        # assign texture to material
-        mtex = mat.texture_slots.add()
-        mtex.texture = texture
-        mtex.texture_coords = 'UV'
+        mat.use_nodes = True
+        # set up node tree
+        node_tree = mat.node_tree
+        shader_node = node_tree.nodes['Principled BSDF']
+        shader_node.inputs['Specular'].default_value = 0.0
+        image_node = node_tree.nodes.new('ShaderNodeTexImage')
+        image_node.image = image
+        image_node.location = [-256.0, 300.0]
+        node_tree.links.new(image_node.outputs['Color'], shader_node.inputs['Base Color'])
 
 def import_bsp(context, filepath, options):
     # TODO: Clean this up; Perhaps by loading everything into lists to begin with
@@ -255,8 +263,6 @@ def import_bsp(context, filepath, options):
     print_debug("-- LOADING TEXTURES --")
     texture_data = load_textures(context, filepath, options['brightness_adjust'])
     if options['create_materials']:
-        if options['use cycles']:
-            bpy.context.scene.render.engine = 'CYCLES'
         create_materials(texture_data, options)
 
     # create some structs for storing data
@@ -303,6 +309,11 @@ def import_bsp(context, filepath, options):
             texinfo_ofs = face.texinfo_id * texinfo_size
             texinfo = BSPTexInfo._make(texinfo_struct.unpack_from(texinfo_data[texinfo_ofs:texinfo_ofs+texinfo_size]))
             texture_specs = texture_data[texinfo.texture_id]
+            texture_name = texture_specs['name']
+            # skip faces that use ignored textures
+            if texture_name in ignored_texnames:
+                continue
+
             texS = texinfo[0:3]
             texT = texinfo[4:7]
 
@@ -328,7 +339,6 @@ def import_bsp(context, filepath, options):
             # find or append material for this face
             material_id = -1
             if options['create_materials']:
-                texture_name = texture_data[texinfo.texture_id]['name']
                 try:
                     material_names = [ m.name for m in obj.data.materials ]
                     material_id = material_names.index(texture_name)
@@ -359,6 +369,7 @@ def import_bsp(context, filepath, options):
                 # assign material
                 if options['create_materials'] and material_id != -1:
                     face.material_index = material_id
+
         if duplicateFaces > 0:
             print_debug("%d duplicate faces not created in model %d" % (duplicateFaces, m))
     
