@@ -179,8 +179,8 @@ def load_textures(context, filepath, brightness_adjust):
         return texture_data
 
 def mesh_add(mesh_id):
-    if bpy.context.scene.objects.active:
-        bpy.ops.object.mode_set(mode='OBJECT')
+    # if bpy.context.scene.objects.active:
+    #     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.add(type='MESH', enter_editmode=True)
     obj = bpy.context.object
     obj.name = "bsp_model_%d" % mesh_id
@@ -349,7 +349,7 @@ def import_bsp(context, filepath, options):
                 # thanks to eppo on the BlenderArtists forum for this two line fix
                 if hasattr(bm.faces, "ensure_lookup_table"):
                 	bm.faces.ensure_lookup_table()
-                bm.faces.layers.tex.verify()
+                # bm.faces.layers.tex.verify()
                 face = bm.faces[-1] # local bmesh face gets deleted by one of the preceding lines
                 for loopElement in face.loops:
                     luvLayer = loopElement[uv_layer]
@@ -372,76 +372,76 @@ def import_bsp(context, filepath, options):
     bpy.ops.object.mode_set(mode='OBJECT')
 
     # add lights and other camera from the entities text
-    lights = []
-    infoStart = 0
-    with open(filepath, 'r') as file:
-        file.seek(header.entities_ofs)
-        lines = file.read(header.entities_size).splitlines()
-        startRE = re.compile('^{')
-        endRE = re.compile('^}')
-        keyRE = re.compile('"([^"]+)"\s+"([^"]+)"')
-        lightRE = re.compile('light.*')
-        playerRE = re.compile('info')
-        i=0
-        len_lines = len(lines)
-        # parse the entities text line by line
-        while i < len_lines:
-            # found a new entity
-            if startRE.match(lines[i]):
-                i += 1
-                ent = {}
-                while i < len_lines:
-                    pair = keyRE.match(lines[i])
-                    if pair:
-                        ent[pair.group(1)] = pair.group(2)
-                    # at the end of this entity
-                    if endRE.match(lines[i]):
-                        break
-                    i += 1
-                # remember certain entities for later
-                if 'classname' in ent and lightRE.match(ent['classname']):
-                    lights.append(ent)
-                if 'classname' in ent and ent['classname'] == 'info_player_start':
-                    infoStart = ent
-            i += 1
-    coodRE = re.compile('(-?\d+)\s+(-?\d+)\s+(-?\d+)') # TODO fix for decimal point
-    print_debug("there are %d lights in the file" % (len(lights)))
-    scale = options['scale']
-    if not options['create lamps']:
-        lights = []
-    if options['use cycles'] and len(lights) > 0:
-        bpy.context.scene.render.engine = 'CYCLES'
-    curseLoc = bpy.context.scene.cursor_location
-    for lightInfo in lights:
-        bright = 200
-        if 'light' in lightInfo:
-            bright = float(lightInfo['light'])
-        # parse and scale location of this light
-        co = coodRE.match(lightInfo['origin'])
-        if co:
-            x = float(co.group(1)) * scale + curseLoc.x
-            y = float(co.group(2)) * scale + curseLoc.y
-            z = float(co.group(3)) * scale + curseLoc.z
-            bpy.ops.object.lamp_add(location=(x,y,z))
-            if options['use cycles']:
-                bpy.data.lamps[-1].node_tree.nodes['Emission'].inputs['Strength'].default_value = bright
-                # bpy.data.lamps[-1].node_tree.nodes['Emission'].inputs['Color'].default_value = (0.8, 0.8, 0.8, 1)
-            else:
-                bpy.data.lamps[-1].energy = bright/50
-                bpy.data.lamps[-1].use_shadow = True 
-                bpy.data.lamps[-1].falloff_type = 'LINEAR_QUADRATIC_WEIGHTED'
-                bpy.data.lamps[-1].distance = 5
-    # add and set a camera at level start, if info_player_start defined
-    if infoStart != 0 and options['create spawn']:
-        co = coodRE.match(infoStart['origin'])
-        rot = radians(float(infoStart['angle'])-90)
-        if co:
-            x = float(co.group(1)) * scale + curseLoc.x
-            y = float(co.group(2)) * scale + curseLoc.y
-            z = float(co.group(3)) * scale + curseLoc.z
-            bpy.ops.object.camera_add(location=(x,y,z),rotation=(radians(90),0,rot))
-            # 90 degree FOV, set camera active
-            bpy.context.active_object.data.lens = 16
-            bpy.context.scene.camera = bpy.context.active_object
+    # lights = []
+    # infoStart = 0
+    # with open(filepath, 'r') as file:
+    #     file.seek(header.entities_ofs)
+    #     lines = file.read(header.entities_size).splitlines()
+    #     startRE = re.compile('^{')
+    #     endRE = re.compile('^}')
+    #     keyRE = re.compile('"([^"]+)"\s+"([^"]+)"')
+    #     lightRE = re.compile('light.*')
+    #     playerRE = re.compile('info')
+    #     i=0
+    #     len_lines = len(lines)
+    #     # parse the entities text line by line
+    #     while i < len_lines:
+    #         # found a new entity
+    #         if startRE.match(lines[i]):
+    #             i += 1
+    #             ent = {}
+    #             while i < len_lines:
+    #                 pair = keyRE.match(lines[i])
+    #                 if pair:
+    #                     ent[pair.group(1)] = pair.group(2)
+    #                 # at the end of this entity
+    #                 if endRE.match(lines[i]):
+    #                     break
+    #                 i += 1
+    #             # remember certain entities for later
+    #             if 'classname' in ent and lightRE.match(ent['classname']):
+    #                 lights.append(ent)
+    #             if 'classname' in ent and ent['classname'] == 'info_player_start':
+    #                 infoStart = ent
+    #         i += 1
+    # coodRE = re.compile('(-?\d+)\s+(-?\d+)\s+(-?\d+)') # TODO fix for decimal point
+    # print_debug("there are %d lights in the file" % (len(lights)))
+    # scale = options['scale']
+    # if not options['create lamps']:
+    #     lights = []
+    # if options['use cycles'] and len(lights) > 0:
+    #     bpy.context.scene.render.engine = 'CYCLES'
+    # curseLoc = bpy.context.scene.cursor_location
+    # for lightInfo in lights:
+    #     bright = 200
+    #     if 'light' in lightInfo:
+    #         bright = float(lightInfo['light'])
+    #     # parse and scale location of this light
+    #     co = coodRE.match(lightInfo['origin'])
+    #     if co:
+    #         x = float(co.group(1)) * scale + curseLoc.x
+    #         y = float(co.group(2)) * scale + curseLoc.y
+    #         z = float(co.group(3)) * scale + curseLoc.z
+    #         bpy.ops.object.lamp_add(location=(x,y,z))
+    #         if options['use cycles']:
+    #             bpy.data.lamps[-1].node_tree.nodes['Emission'].inputs['Strength'].default_value = bright
+    #             # bpy.data.lamps[-1].node_tree.nodes['Emission'].inputs['Color'].default_value = (0.8, 0.8, 0.8, 1)
+    #         else:
+    #             bpy.data.lamps[-1].energy = bright/50
+    #             bpy.data.lamps[-1].use_shadow = True 
+    #             bpy.data.lamps[-1].falloff_type = 'LINEAR_QUADRATIC_WEIGHTED'
+    #             bpy.data.lamps[-1].distance = 5
+    # # add and set a camera at level start, if info_player_start defined
+    # if infoStart != 0 and options['create spawn']:
+    #     co = coodRE.match(infoStart['origin'])
+    #     rot = radians(float(infoStart['angle'])-90)
+    #     if co:
+    #         x = float(co.group(1)) * scale + curseLoc.x
+    #         y = float(co.group(2)) * scale + curseLoc.y
+    #         z = float(co.group(3)) * scale + curseLoc.z
+    #         bpy.ops.object.camera_add(location=(x,y,z),rotation=(radians(90),0,rot))
+    #         # 90 degree FOV, set camera active
+    #         bpy.context.active_object.data.lens = 16
+    #         bpy.context.scene.camera = bpy.context.active_object
 
     print_debug("-- IMPORT COMPLETE --")

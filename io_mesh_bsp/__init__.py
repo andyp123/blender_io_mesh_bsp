@@ -18,12 +18,13 @@
 # addon information
 bl_info = {
     "name": "Import Quake BSP format",
-    "author": "Andrew Palmer", #Ian Cunningham (0.0.5),
-    "version": (0, 0, 7),
-    "blender": (2, 75, 0),
+    "author": "Andrew Palmer (with contributions from Ian Cunningham)",
+    "version": (0, 0, 8),
+    "blender": (2, 80, 0),
     "location": "File > Import > Quake BSP (.bsp)",
-    "description": "This script imports geometry and materials from a Quake 1 BSP file.",
-    "category": "Import-Export"
+    "description": "Import geometry and materials from a Quake 1 BSP file.",
+    "wiki_url": "https://github.com/andyp123/blender_io_mesh_bsp",
+    "category": "Import-Export",
 }
 
 # imports
@@ -44,7 +45,7 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
     filename_ext    = ".bsp"
     filter_glob = StringProperty(default="*.bsp", options={'HIDDEN'})
 
-    scale = FloatProperty(
+    scale: FloatProperty(
             name="Scale",
             description="Reduce the size of the imported geometry.",
             min=0.0, max=1.0,
@@ -52,38 +53,38 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
             default=0.05,
             )
 
-    create_materials = BoolProperty(
+    create_materials: BoolProperty(
             name="Create materials",
             description="Import textures from the BSP as materials.",
-            default=True,
+            default=False,
             )
 
-    brightness_adjust = FloatProperty(
+    brightness_adjust: FloatProperty(
             name="Texture Brightness",
             description="Adjust the brightness of imported textures.",
             min=-1.0, max=1.0,
             default=0.0,
             )
 
-    worldspawn_only = BoolProperty(
+    worldspawn_only: BoolProperty(
             name="Worldspawn only",
             description="Import only the worldspawn entity and ignore other models.",
             default=False,
             )
 
-    use_cycles = BoolProperty(
+    use_cycles: BoolProperty(
             name="Use Cycles",
             description="Use cycles shader nodes for materials and lamps.",
             default=True,
             )
 
-    create_lamps = BoolProperty(
+    create_lamps: BoolProperty(
             name="Create Lamps",
             description="Create Point lamps where lights exist in the original map.",
             default=False,
             )
 
-    create_spawn = BoolProperty(
+    create_spawn: BoolProperty(
             name="Create Spawn",
             description="Create a camera at the level spawn location and activate it.",
             default=False,
@@ -105,16 +106,28 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
         print("Elapsed time: %.2fs" % (time.time() - time_start))
         return {'FINISHED'}
 
+
+classes = (
+    BSPImporter,
+)
+
 def menu_func(self, context):
     self.layout.operator(BSPImporter.bl_idname, text="Quake BSP (.bsp)")
 
+
 def register():
-    bpy.utils.register_module(__name__)
-    bpy.types.INFO_MT_file_import.append(menu_func)
-    
+    for c in classes:
+        bpy.utils.register_class(c)
+
+    bpy.types.TOPBAR_MT_file_import.append(menu_func)
+
+
 def unregister():
-    bpy.utils.unregister_module(__name__)
-    bpy.types.INFO_MT_file_import.remove(menu_func)
+    bpy.types.TOPBAR_MT_file_import.remove(menu_func)
+
+    for c in classes:
+        bpy.utils.unregister_class(c)
+
 
 if __name__ == "__main__":
     register()
