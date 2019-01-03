@@ -47,7 +47,7 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
 
     scale: FloatProperty(
             name="Scale",
-            description="Reduce the size of the imported geometry.",
+            description="Adjust the size of the imported geometry.",
             min=0.0, max=1.0,
             soft_min=0.0, soft_max=1.0,
             default=0.05,
@@ -72,12 +72,6 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
             default=False,
             )
 
-    use_cycles: BoolProperty(
-            name="Use Cycles",
-            description="Use cycles shader nodes for materials and lamps.",
-            default=True,
-            )
-
     create_lamps: BoolProperty(
             name="Create Lamps",
             description="Create Point lamps where lights exist in the original map.",
@@ -98,7 +92,6 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
                 'create_materials' : self.create_materials,
                 'brightness_adjust' : self.brightness_adjust,
                 'worldspawn_only': self.worldspawn_only,
-                'use cycles': self.use_cycles,
                 'create lamps': self.create_lamps,
                 'create spawn': self.create_spawn,
                 }
