@@ -78,17 +78,17 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
             default=False,
             )
 
-    create_lamps: BoolProperty(
-            name="Create Lamps",
-            description="Create Point lamps where lights exist in the original map.",
-            default=False,
-            )
+    # create_lamps: BoolProperty(
+    #         name="Create Lamps",
+    #         description="Create Point lamps where lights exist in the original map.",
+    #         default=False,
+    #         )
 
-    create_spawn: BoolProperty(
-            name="Create Spawn",
-            description="Create a camera at the level spawn location and activate it.",
-            default=False,
-            )
+    # create_spawn: BoolProperty(
+    #         name="Create Spawn",
+    #         description="Create a camera at the level spawn location and activate it.",
+    #         default=False,
+    #         )
 
     
     def execute(self, context):
@@ -99,8 +99,8 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
                 'remove_hidden' : self.remove_hidden,
                 'brightness_adjust' : self.brightness_adjust,
                 'worldspawn_only': self.worldspawn_only,
-                'create lamps': self.create_lamps,
-                'create spawn': self.create_spawn,
+                # 'create lamps': self.create_lamps,
+                # 'create spawn': self.create_spawn,
                 }
         bsp_importer.import_bsp(context, self.filepath, options)
         print("Elapsed time: %.2fs" % (time.time() - time_start))
