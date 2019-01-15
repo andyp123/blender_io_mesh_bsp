@@ -406,11 +406,14 @@ def import_bsp(context, filepath, options):
     else:
         end_model = num_models
 
+    added_objects = []
+
     for m in range(start_model, end_model):
         model_ofs = m * model_size
         model = BSPModel._make(model_struct.unpack_from(model_data[model_ofs:model_ofs+model_size]))
         # create new mesh
         obj = mesh_add(m)
+        added_objects.append(obj)
 
         scale = options['scale']
         obj.scale.x = scale
@@ -507,11 +510,21 @@ def import_bsp(context, filepath, options):
 
     # delete mesh objects with no faces
     bpy.ops.object.select_all(action='DESELECT')
-    objects = (obj for obj in context.scene.objects if obj.type == 'MESH' and len(obj.data.polygons) == 0)
-    for obj in objects:
+    deleted_objects = [obj for obj in added_objects if obj.type == 'MESH' and len(obj.data.polygons) == 0]
+    for obj in deleted_objects:
         obj.select_set(True)
     bpy.ops.object.delete()
 
+    # move objects to a new collection
+    bpy.ops.object.select_all(action='DESELECT')
+    map_name = os.path.basename(filepath).split('.')[0]
+    added_objects = [obj for obj in added_objects if obj not in deleted_objects]
+    for obj in added_objects:
+        obj.select_set(True)
+    bpy.ops.object.move_to_collection(collection_index=0, is_new=True, new_collection_name=map_name)
+
+    # create entities, lights and cameras
+    bpy.ops.object.select_all(action='DESELECT')
     create_entities = options['create_entities']
     create_lights = options['create_lights']
     create_cameras = options['create_cameras']
@@ -520,13 +533,43 @@ def import_bsp(context, filepath, options):
         scale = options['scale']
 
         entities = get_entity_data(filepath, header.entities_ofs, header.entities_size)
+        added_objects = []
+        added_lights = []
         for entity in entities:
             classname = entity['classname']
-            if create_lights and classname.startswith('light'):
-                light_add(entity, scale)
+            obj = None
+            # this stops lights being imported as empties, even with import_all enabled
+            if classname.startswith('light'):
+                if create_lights:
+                    obj = light_add(entity, scale)
+                    added_lights.append(obj)
             elif create_cameras and classname in camera_types:
-                camera_add(entity, scale)
+                obj = camera_add(entity, scale)
+                added_objects.append(obj)
             elif import_all is True or (create_entities and is_imported_entity(classname)):
-                entity_add(entity, scale)
+                obj = entity_add(entity, scale)
+                added_objects.append(obj)
+
+        for obj in added_objects:
+            obj.select_set(True)
+        bpy.ops.object.move_to_collection(collection_index=0, is_new=True, new_collection_name=map_name + "_entities")
+        bpy.ops.object.select_all(action='DESELECT')
+
+        if len(added_lights) > 0:
+            for obj in added_lights:
+                obj.select_set(True)
+            bpy.ops.object.move_to_collection(collection_index=0, is_new=True, new_collection_name=map_name + "_lights")
+            bpy.ops.object.select_all(action='DESELECT')
+
+    # set up view
+    view_3d_areas = [area for area in bpy.context.screen.areas if area.ui_type == 'VIEW_3D']
+    for viewport in view_3d_areas:
+        for space in viewport.spaces:
+            if hasattr(space, 'shading'):
+                shading = space.shading
+                shading.type = 'SOLID'
+                shading.show_backface_culling = True
+                shading.show_specular_highlight = False
+                shading.color_type = 'TEXTURE'
 
     print_debug("-- IMPORT COMPLETE --")

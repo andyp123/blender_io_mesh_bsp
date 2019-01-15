@@ -13,7 +13,7 @@ this addon may stop functioning due to a change in Blender, but I will try and k
 working.
 
 ## Installation
-1. Download the script from GitHub by clicking [here](https://github.com/andyp123/blender_io_mesh_bsp/releases/download/v0.0.8/io_mesh_bsp.zip).
+1. Download the script from GitHub by clicking [here](https://github.com/andyp123/blender_io_mesh_bsp/releases/download/v0.0.9/io_mesh_bsp.zip).
 2. In Blender, open Preferences (Edit > Preferences) and switch to the Add-ons section.
 3. Select 'Install Add-on from file...' and select the 'io_mesh_bsp.zip' file that you downloaded.
 4. Search for the add-on in the list (enter 'bsp' to quickly find it) and enable it.
@@ -48,6 +48,35 @@ Worldspawn is the name given to the first model inside a BSP file. It represents
 static level geometry. Subseqent models in the BSP are dynamic, such as doors, platforms
 and triggers. Enabling this will only import this first model.
 
+### Create Lights (default: Off)
+Import any light entity data in the BSP as lights in Blender. This works quite well for
+older maps, but modern maps often have static light data stripped from the BSP, since
+it doesn't ever change, so the only type of light data that will be imported is for
+lights that are animated or have an ambient effect.
+
+### Create Cameras (default: Off)
+Import info_intermission and info_player_start as cameras in Blender. Created cameras
+will face the same direction as in the BSP file, and the camera field of view will be
+set to match the default 90 degree FOV of Quake.
+
+### Create Entities (default: Off)
+Import certain entity types as empties in Blender. By default, this will only import
+monsters, weapons and items. This is useful if you have imported a mesh you would like
+to place in the level at the same location as an entity in the game.
+
+### Import All (default: Off)
+Rather than just importing a few entity types, this will import all entities contained
+in the BSP as empties. Useful if an entity you need the location of is not included by
+the default Create Entities option.
+
+## Collections
+When a BSP is imported into Blender, the level geometry will be put in a collection
+named after the file. Entities and lights will also be placed into collections. If the
+map name is e1m1.bsp, the resulting collections will look like this:
+* 'e1m1' - level geometry
+* 'e1m1_entities' - entities
+* 'e1m1_lights' - lights
+
 ## View Settings
 Once a BSP has been imported, you might want to tweak some viewport settings to better
 see the geometry. I recommend using the Solid/Workbench display mode and adjusting the
@@ -57,4 +86,5 @@ following:
 * __Backface Culling__: On
 * __Specular Lighting__: Off
 
-Disabling Overlays is also recommended.
+As of version 0.0.9, the importer will attempt to set up any active 3d views to use this
+kind of shading, saving you the hassle. Disabling Overlays is also recommended.
