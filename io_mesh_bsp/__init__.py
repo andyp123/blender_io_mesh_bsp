@@ -19,7 +19,7 @@
 bl_info = {
     "name": "Import Quake BSP format",
     "author": "Andrew Palmer (with contributions from Ian Cunningham)",
-    "version": (0, 0, 8),
+    "version": (0, 0, 9),
     "blender": (2, 80, 0),
     "location": "File > Import > Quake BSP (.bsp)",
     "description": "Import geometry and materials from a Quake 1 BSP file.",
@@ -74,22 +74,33 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
 
     worldspawn_only: BoolProperty(
             name="Worldspawn only",
-            description="Import only the worldspawn entity and ignore other models.",
+            description="Import only the main map geometry and ignore other models, such as doors, etc.",
             default=False,
             )
 
-    # create_lamps: BoolProperty(
-    #         name="Create Lamps",
-    #         description="Create Point lamps where lights exist in the original map.",
-    #         default=False,
-    #         )
+    create_lights: BoolProperty(
+        name="Create Lights",
+        description="Create light objects in Blender from any light data in the BSP file.",
+        default=False,
+        )
 
-    # create_spawn: BoolProperty(
-    #         name="Create Spawn",
-    #         description="Create a camera at the level spawn location and activate it.",
-    #         default=False,
-    #         )
+    create_cameras: BoolProperty(
+        name="Create Cameras",
+        description="Create Cameras from info_player_start and info_intermission entities.",
+        default=False,
+        )
 
+    create_entities: BoolProperty(
+            name="Create Entities",
+            description="Create empties from entity data (monsters, items etc.)",
+            default=False,
+            )
+
+    all_entities: BoolProperty(
+            name="Import All Entities",
+            description="Import entity data for invisible entities, such as trigger_relay, info_notnull etc.",
+            default=False,
+            )
     
     def execute(self, context):
         time_start = time.time()
@@ -99,8 +110,10 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
                 'remove_hidden' : self.remove_hidden,
                 'brightness_adjust' : self.brightness_adjust,
                 'worldspawn_only': self.worldspawn_only,
-                # 'create lamps': self.create_lamps,
-                # 'create spawn': self.create_spawn,
+                'create_lights': self.create_lights,
+                'create_cameras': self.create_cameras,
+                'create_entities': self.create_entities,
+                'all_entities': self.all_entities,
                 }
         bsp_importer.import_bsp(context, self.filepath, options)
         print("Elapsed time: %.2fs" % (time.time() - time_start))

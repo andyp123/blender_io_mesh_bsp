@@ -17,14 +17,12 @@
 
 
 # Authors
-# Andrew Palmer (andyp.123@gmail.com) - Initial Addon (up to 0.0.4)
+# Andrew Palmer (andyp.123@gmail.com) - Initial Addon (up to 0.0.4, 0.0.7 onward), Blender 2.80 conversion
 # Ian Cunningham - (0.0.5) Import Lights, Set up Cycles materials, Various fixes
-# Eppo - Fix breakage in newer (2.75) Blender version 
 
 import bpy, bmesh
 import struct
 import os
-import re
 from collections import namedtuple
 from math import radians
 
@@ -103,11 +101,32 @@ ignored_texnames = (
     "hintskip",
 )
 
+imported_entity_prefixes = (
+    "monster_",
+    "item_",
+    "weapon_",
+)
+
+camera_types = (
+    "info_intermission",
+    "info_player_start",
+)
+
+light_prefix = "light"
+
 # functions
 def print_debug(string):
     debug = False
     if debug:
         print_debug(string)
+
+
+def is_imported_entity(classname):
+    for prefix in imported_entity_prefixes:
+        if classname.startswith(prefix):
+            return True
+    return False
+
 
 def load_palette(filepath, brightness_adjust):
     with open(filepath, 'rb') as file:
@@ -189,16 +208,120 @@ def load_textures(context, filepath, brightness_adjust):
         # and optionally to create materials in the scene
         return texture_data
 
+
+# load entity data from the entity lump into an array of simple entity objects
+# this data can easily be converted to objects in the scene
+def get_entity_data(filepath, entities_ofs, entities_size):
+    entities = []
+    with open(filepath, 'r') as file:
+        file.seek(entities_ofs)
+        lines = file.read(entities_size).splitlines()
+
+        i = 0
+        num_lines = len(lines)
+        start_char = '{'
+        end_char = '}'
+
+        while i < num_lines:
+            if lines[i].startswith(start_char):
+                i += 1
+                entity = {}
+                while not lines[i].startswith(end_char):
+                    # split '"classname" "info_player_start"' into key and value
+                    kv = [s for s in lines[i].split('"') if s != '' and s != ' ']
+                    entity[kv[0]] = kv[1]
+                    i += 1
+                if 'classname' in entity and 'origin' in entity:
+                    entities.append(entity)
+            i += 1
+
+    return entities  
+
+
 def mesh_add(mesh_id):
     if bpy.context.active_object:
         bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.add(type='MESH', enter_editmode=True)
     obj = bpy.context.object
     obj.name = "bsp_model_%d" % mesh_id
-    obj.show_name = True
+    # obj.show_name = True
     obj_mesh = obj.data
     obj_mesh.name = obj.name + "_mesh"
     return obj
+
+
+def entity_add(entity, scale):
+    if bpy.context.active_object:
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+    origin = [float(i) * scale for i in entity['origin'].split(' ')]
+    angle = [0, 0, 0]
+    if 'angle' in entity:
+        angle[2] = radians(float(entity['angle']) - 90)
+
+    bpy.ops.object.add(type='EMPTY', location=origin, rotation=angle)
+
+    obj = bpy.context.object
+    obj.name = entity['classname']
+    obj.show_name = True
+    return obj
+
+def light_add(entity, scale):
+    if bpy.context.active_object:
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+    origin = [float(i) * scale for i in entity['origin'].split(' ')]
+    angle = [0, 0, 0]
+    if 'angle' in entity:
+        angle[2] = radians(float(entity['angle']) - 90)
+
+    bpy.ops.object.add(type='LIGHT', location=origin, rotation=angle)
+    light = 200 if 'light' not in entity else float(entity['light'])
+    light_data = bpy.context.object.data
+    light_data.type = 'POINT'
+    light_data.use_nodes = True
+    light_data.node_tree.nodes['Emission'].inputs['Strength'].default_value = light
+
+    obj = bpy.context.object
+    obj.name = entity['classname']
+    obj.show_name = True
+    return obj
+
+
+def camera_add(entity, scale):
+    if bpy.context.active_object:
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+    origin = [float(i) * scale for i in entity['origin'].split(' ')]
+    angle = [0, 0, 0]
+    if 'mangle' in entity:
+        # mangle is pitch, yaw and roll of the camera
+        # assume y is forward vector, so roll is y rotation
+        mangle = [float(i) for i in entity['mangle'].split(' ')]
+        angle[0] = radians(90 - mangle[0]) # pitch
+        angle[1] = radians(mangle[2]) # roll
+        angle[2] = radians(mangle[1] - 90) # yaw
+    else:
+        z = 0 if 'angle' not in entity else float(entity['angle'])
+        angle[0] = radians(90)
+        angle[2] = radians(z - 90)
+
+    bpy.ops.object.add(type='CAMERA', location=origin, rotation=angle)
+    camera_data = bpy.context.object.data
+    camera_data.lens = 18 # corresponds to 90 degree FOV
+    camera_data.lens_unit = 'FOV' # show as FOV in UI
+
+    classname = entity['classname']
+    obj = bpy.context.object
+    obj.name = classname
+    obj.show_name = True
+
+    # set active scene camera
+    if classname == 'info_player_start':
+        bpy.context.scene.camera = obj
+
+    return obj
+
 
 def create_materials(texture_data, options):
     for texture in texture_data:
@@ -225,6 +348,7 @@ def create_materials(texture_data, options):
         image_node.image = image
         image_node.location = [-256.0, 300.0]
         node_tree.links.new(image_node.outputs['Color'], shader_node.inputs['Base Color'])
+
 
 def import_bsp(context, filepath, options):
     # TODO: Clean this up; Perhaps by loading everything into lists to begin with
@@ -282,7 +406,6 @@ def import_bsp(context, filepath, options):
     else:
         end_model = num_models
 
-    
     for m in range(start_model, end_model):
         model_ofs = m * model_size
         model = BSPModel._make(model_struct.unpack_from(model_data[model_ofs:model_ofs+model_size]))
@@ -389,77 +512,21 @@ def import_bsp(context, filepath, options):
         obj.select_set(True)
     bpy.ops.object.delete()
 
-    # add lights and other camera from the entities text
-    # lights = []
-    # infoStart = 0
-    # with open(filepath, 'r') as file:
-    #     file.seek(header.entities_ofs)
-    #     lines = file.read(header.entities_size).splitlines()
-    #     startRE = re.compile('^{')
-    #     endRE = re.compile('^}')
-    #     keyRE = re.compile('"([^"]+)"\s+"([^"]+)"')
-    #     lightRE = re.compile('light.*')
-    #     playerRE = re.compile('info')
-    #     i=0
-    #     len_lines = len(lines)
-    #     # parse the entities text line by line
-    #     while i < len_lines:
-    #         # found a new entity
-    #         if startRE.match(lines[i]):
-    #             i += 1
-    #             ent = {}
-    #             while i < len_lines:
-    #                 pair = keyRE.match(lines[i])
-    #                 if pair:
-    #                     ent[pair.group(1)] = pair.group(2)
-    #                 # at the end of this entity
-    #                 if endRE.match(lines[i]):
-    #                     break
-    #                 i += 1
-    #             # remember certain entities for later
-    #             if 'classname' in ent and lightRE.match(ent['classname']):
-    #                 lights.append(ent)
-    #             if 'classname' in ent and ent['classname'] == 'info_player_start':
-    #                 infoStart = ent
-    #         i += 1
-    # coodRE = re.compile('(-?\d+)\s+(-?\d+)\s+(-?\d+)') # TODO fix for decimal point
-    # print_debug("there are %d lights in the file" % (len(lights)))
-    # scale = options['scale']
-    # if not options['create lamps']:
-    #     lights = []
-    # if options['use cycles'] and len(lights) > 0:
-    #     bpy.context.scene.render.engine = 'CYCLES'
-    # curseLoc = bpy.context.scene.cursor_location
-    # for lightInfo in lights:
-    #     bright = 200
-    #     if 'light' in lightInfo:
-    #         bright = float(lightInfo['light'])
-    #     # parse and scale location of this light
-    #     co = coodRE.match(lightInfo['origin'])
-    #     if co:
-    #         x = float(co.group(1)) * scale + curseLoc.x
-    #         y = float(co.group(2)) * scale + curseLoc.y
-    #         z = float(co.group(3)) * scale + curseLoc.z
-    #         bpy.ops.object.lamp_add(location=(x,y,z))
-    #         if options['use cycles']:
-    #             bpy.data.lamps[-1].node_tree.nodes['Emission'].inputs['Strength'].default_value = bright
-    #             # bpy.data.lamps[-1].node_tree.nodes['Emission'].inputs['Color'].default_value = (0.8, 0.8, 0.8, 1)
-    #         else:
-    #             bpy.data.lamps[-1].energy = bright/50
-    #             bpy.data.lamps[-1].use_shadow = True 
-    #             bpy.data.lamps[-1].falloff_type = 'LINEAR_QUADRATIC_WEIGHTED'
-    #             bpy.data.lamps[-1].distance = 5
-    # # add and set a camera at level start, if info_player_start defined
-    # if infoStart != 0 and options['create spawn']:
-    #     co = coodRE.match(infoStart['origin'])
-    #     rot = radians(float(infoStart['angle'])-90)
-    #     if co:
-    #         x = float(co.group(1)) * scale + curseLoc.x
-    #         y = float(co.group(2)) * scale + curseLoc.y
-    #         z = float(co.group(3)) * scale + curseLoc.z
-    #         bpy.ops.object.camera_add(location=(x,y,z),rotation=(radians(90),0,rot))
-    #         # 90 degree FOV, set camera active
-    #         bpy.context.active_object.data.lens = 16
-    #         bpy.context.scene.camera = bpy.context.active_object
+    create_entities = options['create_entities']
+    create_lights = options['create_lights']
+    create_cameras = options['create_cameras']
+    import_all = options['all_entities']
+    if create_entities or create_cameras or create_lights or import_all:
+        scale = options['scale']
+
+        entities = get_entity_data(filepath, header.entities_ofs, header.entities_size)
+        for entity in entities:
+            classname = entity['classname']
+            if create_lights and classname.startswith('light'):
+                light_add(entity, scale)
+            elif create_cameras and classname in camera_types:
+                camera_add(entity, scale)
+            elif import_all is True or (create_entities and is_imported_entity(classname)):
+                entity_add(entity, scale)
 
     print_debug("-- IMPORT COMPLETE --")
