@@ -13,7 +13,7 @@ this addon may stop functioning due to a change in Blender, but I will try and k
 working.
 
 ## Installation
-1. Download the script from GitHub by clicking [here](https://github.com/andyp123/blender_io_mesh_bsp/releases/download/v0.0.9/io_mesh_bsp.zip).
+1. Download the script from GitHub by clicking [here](https://github.com/andyp123/blender_io_mesh_bsp/releases/download/v0.0.9/io_mesh_bsp_v009.zip).
 2. In Blender, open Preferences (Edit > Preferences) and switch to the Add-ons section.
 3. Select 'Install Add-on from file...' and select the 'io_mesh_bsp.zip' file that you downloaded.
 4. Search for the add-on in the list (enter 'bsp' to quickly find it) and enable it.
