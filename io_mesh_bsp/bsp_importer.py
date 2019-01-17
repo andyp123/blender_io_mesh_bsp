@@ -508,20 +508,19 @@ def import_bsp(context, filepath, options):
 
     bpy.ops.object.mode_set(mode='OBJECT')
 
+    # move objects to a new collection
+    bpy.ops.object.select_all(action='DESELECT')
+    for obj in added_objects:
+        obj.select_set(True)
+    map_name = os.path.basename(filepath).split('.')[0]
+    bpy.ops.object.move_to_collection(collection_index=0, is_new=True, new_collection_name=map_name)
+
     # delete mesh objects with no faces
     bpy.ops.object.select_all(action='DESELECT')
     deleted_objects = [obj for obj in added_objects if obj.type == 'MESH' and len(obj.data.polygons) == 0]
     for obj in deleted_objects:
         obj.select_set(True)
     bpy.ops.object.delete()
-
-    # move objects to a new collection
-    bpy.ops.object.select_all(action='DESELECT')
-    map_name = os.path.basename(filepath).split('.')[0]
-    added_objects = [obj for obj in added_objects if obj not in deleted_objects]
-    for obj in added_objects:
-        obj.select_set(True)
-    bpy.ops.object.move_to_collection(collection_index=0, is_new=True, new_collection_name=map_name)
 
     # create entities, lights and cameras
     bpy.ops.object.select_all(action='DESELECT')
