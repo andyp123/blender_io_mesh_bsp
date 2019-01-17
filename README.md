@@ -12,6 +12,8 @@ to run this addon. At the time of writing, Blender 2.80 is still in development,
 this addon may stop functioning due to a change in Blender, but I will try and keep it
 working.
 
+![Imported level (dm7rmx)](https://raw.githubusercontent.com/andyp123/blender_io_mesh_bsp/master/README_img/dm7rmx.png)
+
 ## Installation
 1. Download the script from GitHub by clicking [here](https://github.com/andyp123/blender_io_mesh_bsp/releases/download/v0.0.9/io_mesh_bsp_v009.zip).
 2. In Blender, open Preferences (Edit > Preferences) and switch to the Add-ons section.
