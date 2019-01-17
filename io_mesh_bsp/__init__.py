@@ -41,9 +41,12 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
     bl_description  = "Import geometry from Quake BSP file format (.bsp)"
     bl_label        = "Quake BSP Importer"
     bl_options      = {'UNDO'}
-    
-    filename_ext    = ".bsp"
-    filter_glob = StringProperty(default="*.bsp", options={'HIDDEN'})
+
+    filename_ext = ".bsp"
+    filter_glob: StringProperty(
+            default="*.bsp",
+            options={'HIDDEN'},
+            )
 
     scale: FloatProperty(
             name="Scale",
