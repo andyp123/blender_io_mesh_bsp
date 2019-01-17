@@ -128,6 +128,29 @@ def is_imported_entity(classname):
     return False
 
 
+def parse_float_safe(obj, key, default=0):
+    try:
+        if key in obj:
+            f = float(obj[key])
+            return f
+    except ValueError:
+        pass
+    return default
+
+
+def parse_vec3_safe(obj, key, scale=1):
+    if key in obj:
+        val = obj[key].split(' ')
+        if len(val) is 3:
+            try:
+                vec = [float(i) * scale for i in val]
+                return vec
+            except ValueError:
+                pass
+
+    return [0, 0, 0]
+
+
 def load_palette(filepath, brightness_adjust):
     with open(filepath, 'rb') as file:
         colors_byte = struct.unpack('<768B', file.read(768))
@@ -254,10 +277,9 @@ def entity_add(entity, scale):
     if bpy.context.active_object:
         bpy.ops.object.mode_set(mode='OBJECT')
 
-    origin = [float(i) * scale for i in entity['origin'].split(' ')]
+    origin = parse_vec3_safe(entity, 'origin', scale)
     angle = [0, 0, 0]
-    if 'angle' in entity:
-        angle[2] = radians(float(entity['angle']) - 90)
+    angle[2] = parse_float_safe(entity, 'angle', 0)
 
     bpy.ops.object.add(type='EMPTY', location=origin, rotation=angle)
 
@@ -270,13 +292,12 @@ def light_add(entity, scale):
     if bpy.context.active_object:
         bpy.ops.object.mode_set(mode='OBJECT')
 
-    origin = [float(i) * scale for i in entity['origin'].split(' ')]
+    origin = parse_vec3_safe(entity, 'origin', scale)
     angle = [0, 0, 0]
-    if 'angle' in entity:
-        angle[2] = radians(float(entity['angle']) - 90)
+    angle[2] = parse_float_safe(entity, 'angle', 0)
 
     bpy.ops.object.add(type='LIGHT', location=origin, rotation=angle)
-    light = 200 if 'light' not in entity else float(entity['light'])
+    light = parse_float_safe(entity, 'light', 200)
     light_data = bpy.context.object.data
     light_data.type = 'POINT'
     light_data.use_nodes = True
@@ -292,17 +313,17 @@ def camera_add(entity, scale):
     if bpy.context.active_object:
         bpy.ops.object.mode_set(mode='OBJECT')
 
-    origin = [float(i) * scale for i in entity['origin'].split(' ')]
+    origin = parse_vec3_safe(entity, 'origin', scale)
     angle = [0, 0, 0]
     if 'mangle' in entity:
         # mangle is pitch, yaw and roll of the camera
         # assume y is forward vector, so roll is y rotation
-        mangle = [float(i) for i in entity['mangle'].split(' ')]
+        mangle = parse_vec3_safe(entity, 'mangle')
         angle[0] = radians(90 - mangle[0]) # pitch
         angle[1] = radians(mangle[2]) # roll
         angle[2] = radians(mangle[1] - 90) # yaw
     else:
-        z = 0 if 'angle' not in entity else float(entity['angle'])
+        z = parse_float_safe(entity, 'angle', 0)
         angle[0] = radians(90)
         angle[2] = radians(z - 90)
 
