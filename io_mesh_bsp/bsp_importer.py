@@ -236,9 +236,11 @@ def load_textures(context, filepath, brightness_adjust):
 # this data can easily be converted to objects in the scene
 def get_entity_data(filepath, entities_ofs, entities_size):
     entities = []
-    with open(filepath, 'r') as file:
+    
+    with open(filepath, 'rb') as file:
         file.seek(entities_ofs)
-        lines = file.read(entities_size).splitlines()
+        entity_lump = file.read(entities_size)
+        lines = entity_lump.decode('ascii').splitlines()
 
         i = 0
         num_lines = len(lines)
