@@ -44,42 +44,42 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
 
     filename_ext = ".bsp"
     filter_glob: StringProperty(
-            default="*.bsp",
-            options={'HIDDEN'},
-            )
+        default="*.bsp",
+        options={'HIDDEN'},
+        )
 
     scale: FloatProperty(
-            name="Scale",
-            description="Adjust the size of the imported geometry.",
-            min=0.0, max=1.0,
-            soft_min=0.0, soft_max=1.0,
-            default=0.05,
-            )
+        name="Scale",
+        description="Adjust the size of the imported geometry.",
+        min=0.0, max=1.0,
+        soft_min=0.0, soft_max=1.0,
+        default=0.05,
+        )
 
     create_materials: BoolProperty(
-            name="Create materials",
-            description="Import textures from the BSP as materials.",
-            default=True,
-            )
+        name="Create materials",
+        description="Import textures from the BSP as materials.",
+        default=True,
+        )
 
     remove_hidden: BoolProperty(
-            name="Remove Hidden",
-            description="Remove hidden geometry, such as triggers",
-            default=True,
-            )
+        name="Remove Hidden",
+        description="Remove hidden geometry, such as triggers",
+        default=True,
+        )
 
     brightness_adjust: FloatProperty(
-            name="Texture Brightness",
-            description="Adjust the brightness of imported textures.",
-            min=-1.0, max=1.0,
-            default=0.0,
-            )
+        name="Texture Brightness",
+        description="Adjust the brightness of imported textures.",
+        min=-1.0, max=1.0,
+        default=0.0,
+        )
 
     worldspawn_only: BoolProperty(
-            name="Worldspawn only",
-            description="Import only the main map geometry and ignore other models, such as doors, etc.",
-            default=False,
-            )
+        name="Worldspawn only",
+        description="Import only the main map geometry and ignore other models, such as doors, etc.",
+        default=False,
+        )
 
     create_lights: BoolProperty(
         name="Create Lights",
@@ -94,16 +94,16 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
         )
 
     create_entities: BoolProperty(
-            name="Create Entities",
-            description="Create empties from entity data (monsters, items etc.)",
-            default=False,
-            )
+        name="Create Entities",
+        description="Create empties from entity data (monsters, items etc.)",
+        default=False,
+        )
 
     all_entities: BoolProperty(
-            name="Import All Entities",
-            description="Import entity data for invisible entities, such as trigger_relay, info_notnull etc.",
-            default=False,
-            )
+        name="Import All Entities",
+        description="Import entity data for invisible entities, such as trigger_relay, info_notnull etc.",
+        default=False,
+        )
     
     def execute(self, context):
         time_start = time.time()
