@@ -50,13 +50,13 @@ Worldspawn is the name given to the first model inside a BSP file. It represents
 static level geometry. Subseqent models in the BSP are dynamic, such as doors, platforms
 and triggers. Enabling this will only import this first model.
 
-### Create Lights (default: Off)
+### Create Lights (default: On)
 Import any light entity data in the BSP as lights in Blender. This works quite well for
 older maps, but modern maps often have static light data stripped from the BSP, since
 it doesn't ever change, so the only type of light data that will be imported is for
 lights that are animated or have an ambient effect.
 
-### Create Cameras (default: Off)
+### Create Cameras (default: On)
 Import info_intermission and info_player_start as cameras in Blender. Created cameras
 will face the same direction as in the BSP file, and the camera field of view will be
 set to match the default 90 degree FOV of Quake.
