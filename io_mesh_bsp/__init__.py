@@ -19,7 +19,7 @@
 bl_info = {
     "name": "Import Quake BSP format",
     "author": "Andrew Palmer (with contributions from Ian Cunningham)",
-    "version": (0, 0, 9),
+    "version": (0, 0, 95),
     "blender": (2, 80, 0),
     "location": "File > Import > Quake BSP (.bsp)",
     "description": "Import geometry and materials from a Quake 1 BSP file.",

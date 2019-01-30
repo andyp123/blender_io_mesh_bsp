@@ -25,6 +25,7 @@ import struct
 import os
 from collections import namedtuple
 from math import radians
+from random import uniform # used for setting material color
 
 
 # type definitions
@@ -363,7 +364,7 @@ def create_materials(texture_data, options):
         mat = bpy.data.materials.new(name)
         mat.preview_render_type = 'CUBE'
         mat.use_nodes = True
-        mat.diffuse_color = [0.8, 0.8, 0.8, 1.0]
+        mat.diffuse_color = [uniform(0.1, 1.0), uniform(0.1, 1.0), uniform(0.1, 1.0), 1.0]
         # set up node tree
         node_tree = mat.node_tree
         shader_node = node_tree.nodes['Principled BSDF']
@@ -508,7 +509,7 @@ def import_bsp(context, filepath, options):
                 uv_layer = bm.loops.layers.uv.verify()
                 # thanks to eppo on the BlenderArtists forum for this two line fix
                 if hasattr(bm.faces, "ensure_lookup_table"):
-                	bm.faces.ensure_lookup_table()
+                    bm.faces.ensure_lookup_table()
                 # bm.faces.layers.tex.verify()
                 face = bm.faces[-1] # local bmesh face gets deleted by one of the preceding lines
                 for loopElement in face.loops:
