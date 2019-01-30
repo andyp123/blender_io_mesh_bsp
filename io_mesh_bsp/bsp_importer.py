@@ -363,6 +363,7 @@ def create_materials(texture_data, options):
         mat = bpy.data.materials.new(name)
         mat.preview_render_type = 'CUBE'
         mat.use_nodes = True
+        mat.diffuse_color = [0.8, 0.8, 0.8, 1.0]
         # set up node tree
         node_tree = mat.node_tree
         shader_node = node_tree.nodes['Principled BSDF']
