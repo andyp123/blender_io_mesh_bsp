@@ -84,13 +84,13 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
     create_lights: BoolProperty(
         name="Create Lights",
         description="Create light objects in Blender from any light data in the BSP file.",
-        default=False,
+        default=True,
         )
 
     create_cameras: BoolProperty(
         name="Create Cameras",
         description="Create Cameras from info_player_start and info_intermission entities.",
-        default=False,
+        default=True,
         )
 
     create_entities: BoolProperty(
