@@ -589,9 +589,10 @@ def import_bsp(context, filepath, options):
         for space in viewport.spaces:
             if hasattr(space, 'shading'):
                 shading = space.shading
-                shading.type = 'SOLID'
+                shading.type = 'SOLID' # Workbench engine
+                shading.light = 'STUDIO' # Studio lights (needed for some of the following options)
+                shading.color_type = 'TEXTURE' # textured mode (only available with FLAT and STUDIO lighting)
                 shading.show_backface_culling = True
                 shading.show_specular_highlight = False
-                shading.color_type = 'TEXTURE'
 
     print_debug("-- IMPORT COMPLETE --")
