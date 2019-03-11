@@ -15,6 +15,11 @@
 #  All rights reserved.
 #  ***** GPL LICENSE BLOCK *****
 
+# reload submodules if the addon is reloaded 
+if "bpy" in locals():
+    import importlib
+    importlib.reload(bsp_importer)
+
 # addon information
 bl_info = {
     "name": "Import Quake BSP format",
