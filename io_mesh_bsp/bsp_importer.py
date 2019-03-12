@@ -117,6 +117,14 @@ camera_types = (
 
 light_prefix = "light"
 
+# special texture attributes
+sky_prefix = "sky"
+transparent_prefix = "{"
+liquid_prefix = "*"
+
+fullbright_index = 224 # start of fullbright colors in palette
+transparent_index = 255 # transparent color
+
 # functions
 def print_debug(string):
     debug = True
@@ -166,6 +174,21 @@ def load_palette(filepath, brightness_adjust):
         return colors
 
 
+def generate_mask(fg_indices, num_pixels, black_background=True):
+    if black_background:
+        fg = [1.0, 1.0, 1.0]
+        bg = [0.0, 0.0, 0.0]
+    else:
+        fg = [0.0, 0.0, 0.0]
+        bg = [1.0, 1.0, 1.0]
+
+    mask_pixels = [bg] * pixel_count
+    for i in fg_indices:
+        mask_pixels[i] = fg
+
+    return mask_pixels
+
+
 def load_textures(context, filepath, brightness_adjust):
     with open(filepath, 'rb') as file:
         # read file header
@@ -213,19 +236,44 @@ def load_textures(context, filepath, brightness_adjust):
             # convert the paletized pixels into regular rgba pixels
             # note that i is fiddled with in order to reverse Y
             pixels = []
+            # lists containing indices of fullbright and transparent pixels
+            fullbright = []
+            transparent = []
+            is_transparent = miptex_name.startswith(transparent_prefix)
+
             for y in reversed(range(miptex.height)):
                 i = miptex.width * y
                 for x in range(miptex.width):
-                    c = pixels_pal[i+x] * 3
+                    idx = i + x
+                    c = pixels_pal[idx] * 3
                     pixels.append(colors[c])    # red
                     pixels.append(colors[c+1])  # green
                     pixels.append(colors[c+2])  # blue
                     pixels.append(1.0)          # alpha
-                    
+
+                    # masks
+                    if idx >= fullbright_index:
+                        fullbright.append[idx]
+                    if is_transparent && idx == transparent_index:
+                        transparent.append[idx]
+
             # create an image and save it
             image = bpy.data.images.new(miptex_name, width=miptex.width, height=miptex.height)
             image.pixels = pixels
-            texture_data.append(dict(name=miptex_name, width=miptex.width, height=miptex.height, image=image))
+            texture_item = dict(name=miptex_name, width=miptex.width, height=miptex.height, image=image)
+
+            # generate masks if required
+            if len(fullbright) > 0:
+                mask = bpy.data.images.new(miptex_name + "_bright", width=miptex.width, height=miptex.height)
+                mask.pixels = generate_mask(fullbright, len(pixels))
+                texture_item['fullbright_mask'] = mask
+            if is_transparent && len(transparent) > 0:
+                mask = bpy.data.images.new(miptex_name + "_trans", width=miptex.width, height=miptex.height)
+                mask.pixels = generate_mask(transparent, len(pixels))
+                texture_item['transparent_mask'] = mask
+
+            texture_data.append(texture_item)
+            
             # image.filepath_raw = "/tmp/%s.png" % miptex_name
             # image.file_format = 'PNG'
             # image.save()
