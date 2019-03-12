@@ -72,12 +72,14 @@ BSPFace = namedtuple('BSPFace',
     "lightmap")
     )
 fmt_BSPFace = '<HHiHHBBBBi'
+fmt_BSP2Face = '<IIiIIBBBBi'
 
 BSPVertex = namedtuple('BSPVertex', 'x, y, z')
 fmt_BSPVertex = '<fff'
 
 BSPEdge = namedtuple('BSPEdge', 'vertex0, vertex1')
 fmt_BSPEdge = '<HH'
+fmt_BSP2Edge = '<II'
 
 BSPTexInfo = namedtuple('BSPTexInfo',
     ("s_x,  s_y,    s_z,    s_dist,"
@@ -389,9 +391,13 @@ def import_bsp(context, filepath, options):
         bsp2 = True if header.version == 844124994 # magic number of 'BSP2' 
 
         num_models = int(header.models_size / struct.calcsize(fmt_BSPModel))
-        num_faces = int(header.faces_size / struct.calcsize(fmt_BSPFace))
-        num_edges = int(header.edges_size / struct.calcsize(fmt_BSPEdge))
         num_verts = int(header.verts_size / struct.calcsize(fmt_BSPVertex))
+        if bsp2:
+            num_faces = int(header.faces_size / struct.calcsize(fmt_BSP2Face))
+            num_edges = int(header.edges_size / struct.calcsize(fmt_BSP2Edge))
+        else:
+            num_faces = int(header.faces_size / struct.calcsize(fmt_BSPFace))
+            num_edges = int(header.edges_size / struct.calcsize(fmt_BSPEdge))
 
         print_debug("-- IMPORTING BSP --")
         print_debug("Source file: %s (%d)" % (filepath, header.version))
@@ -422,12 +428,18 @@ def import_bsp(context, filepath, options):
         create_materials(texture_data, options)
 
     # create some structs for storing data
+    if bsp2:
+        face_size = struct.calcsize(fmt_BSP2Face)
+        face_struct = struct.Struct(fmt_BSP2Face)
+        edge_size = struct.calcsize(fmt_BSP2Edge)
+        edge_struct = struct.Struct(fmt_BSP2Edge)
+    else:
+        face_size = struct.calcsize(fmt_BSPFace)
+        face_struct = struct.Struct(fmt_BSPFace)
+        edge_size = struct.calcsize(fmt_BSPEdge)
+        edge_struct = struct.Struct(fmt_BSPEdge)
     model_size = struct.calcsize(fmt_BSPModel)
     model_struct = struct.Struct(fmt_BSPModel)
-    face_size = struct.calcsize(fmt_BSPFace)
-    face_struct = struct.Struct(fmt_BSPFace)
-    edge_size = struct.calcsize(fmt_BSPEdge)
-    edge_struct = struct.Struct(fmt_BSPEdge)
     texinfo_size = struct.calcsize(fmt_BSPTexInfo)
     texinfo_struct = struct.Struct(fmt_BSPTexInfo)
 
@@ -439,7 +451,8 @@ def import_bsp(context, filepath, options):
         end_model = num_models
 
     added_objects = []
-
+    remove_hidden = options['remove_hidden']
+    
     for m in range(start_model, end_model):
         model_ofs = m * model_size
         model = BSPModel._make(model_struct.unpack_from(model_data[model_ofs:model_ofs+model_size]))
@@ -469,7 +482,7 @@ def import_bsp(context, filepath, options):
             texture_specs = texture_data[texinfo.texture_id]
             texture_name = texture_specs['name']
             # skip faces that use ignored textures
-            if options['remove_hidden'] is True and texture_name in ignored_texnames:
+            if remove_hidden and texture_name in ignored_texnames:
                 continue
 
             texS = texinfo[0:3]
