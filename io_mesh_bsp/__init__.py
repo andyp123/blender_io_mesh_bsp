@@ -58,7 +58,7 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
         description="Adjust the size of the imported geometry.",
         min=0.0, max=1.0,
         soft_min=0.0, soft_max=1.0,
-        default=0.05,
+        default=0.03125, # 1 Meter = 32 Quake units
         )
 
     create_materials: BoolProperty(
@@ -113,16 +113,16 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
     def execute(self, context):
         time_start = time.time()
         options = {
-                'scale' : self.scale,
-                'create_materials' : self.create_materials,
-                'remove_hidden' : self.remove_hidden,
-                'brightness_adjust' : self.brightness_adjust,
-                'worldspawn_only': self.worldspawn_only,
-                'create_lights': self.create_lights,
-                'create_cameras': self.create_cameras,
-                'create_entities': self.create_entities,
-                'all_entities': self.all_entities,
-                }
+            'scale' : self.scale,
+            'create_materials' : self.create_materials,
+            'remove_hidden' : self.remove_hidden,
+            'brightness_adjust' : self.brightness_adjust,
+            'worldspawn_only': self.worldspawn_only,
+            'create_lights': self.create_lights,
+            'create_cameras': self.create_cameras,
+            'create_entities': self.create_entities,
+            'all_entities': self.all_entities,
+            }
         bsp_importer.import_bsp(context, self.filepath, options)
         print("Elapsed time: %.2fs" % (time.time() - time_start))
         return {'FINISHED'}
