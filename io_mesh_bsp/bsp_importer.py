@@ -378,9 +378,15 @@ def create_materials(texture_data, options):
 def import_bsp(context, filepath, options):
     # TODO: Clean this up; Perhaps by loading everything into lists to begin with
     header = 0 # scope header variable outside with block
+    bsp2 = False
     with open(filepath, 'rb') as file:
         header_data = file.read(struct.calcsize(fmt_BSPHeader))
         header = BSPHeader._make(struct.unpack(fmt_BSPHeader, header_data))
+
+        # TODO:
+        # in order to handle bsp2 files, we need to check the version number here
+        # and switch to bsp2 format data structures if the file is bsp2.
+        bsp2 = True if header.version == 844124994 # magic number of 'BSP2' 
 
         num_models = int(header.models_size / struct.calcsize(fmt_BSPModel))
         num_faces = int(header.faces_size / struct.calcsize(fmt_BSPFace))
@@ -388,7 +394,7 @@ def import_bsp(context, filepath, options):
         num_verts = int(header.verts_size / struct.calcsize(fmt_BSPVertex))
 
         print_debug("-- IMPORTING BSP --")
-        print_debug("Source file: %s (bsp %d)" % (filepath, header.version))
+        print_debug("Source file: %s (%d)" % (filepath, header.version))
         print_debug("bsp contains %d models (faces = %d, edges = %d, verts = %d)" % (num_models, num_faces, num_edges, num_verts))
 
         # read models, faces, edges and vertices into buffers
@@ -408,6 +414,7 @@ def import_bsp(context, filepath, options):
         file.seek(header.verts_ofs)
         vertex_list = struct.unpack('<%df' % int(header.verts_size/4), file.read(header.verts_size))
 
+    # TODO: Gracefully handle case of no image data contained in bsp (e.g. bsp 30)
     # load texture data (name, width, height, image)
     print_debug("-- LOADING TEXTURES --")
     texture_data = load_textures(context, filepath, options['brightness_adjust'])
