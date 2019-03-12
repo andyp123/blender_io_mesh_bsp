@@ -121,7 +121,7 @@ light_prefix = "light"
 def print_debug(string):
     debug = True
     if debug:
-        print_debug(string)
+        print(string)
 
 
 def is_imported_entity(classname):
