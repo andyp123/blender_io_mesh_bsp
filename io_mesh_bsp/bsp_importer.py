@@ -117,7 +117,7 @@ light_prefix = "light"
 
 # functions
 def print_debug(string):
-    debug = False
+    debug = True
     if debug:
         print_debug(string)
 
