@@ -118,16 +118,16 @@ camera_types = (
 light_prefix = "light"
 
 # special texture attributes
-sky_prefix = "sky"
 transparent_prefix = "{"
 liquid_prefix = "*"
+sky_prefix = "sky"
 
 fullbright_index = 224 # start of fullbright colors in palette
 transparent_index = 255 # transparent color
 
 # functions
 def print_debug(string):
-    debug = True
+    debug = False
     if debug:
         print(string)
 
@@ -175,16 +175,16 @@ def load_palette(filepath, brightness_adjust):
 
 
 def generate_mask(fg_indices, num_pixels, black_background=True):
-    if black_background:
-        fg = [1.0, 1.0, 1.0]
-        bg = [0.0, 0.0, 0.0]
-    else:
-        fg = [0.0, 0.0, 0.0]
-        bg = [1.0, 1.0, 1.0]
+    fg = 1.0 if black_background else 0.0
+    bg = 0.0 if black_background else 1.0
 
-    mask_pixels = [bg] * pixel_count
+    mask_pixels = [bg] * (num_pixels * 4)
     for i in fg_indices:
-        mask_pixels[i] = fg
+        idx = i * 4
+        mask_pixels[idx] = fg
+        mask_pixels[idx+1] = fg
+        mask_pixels[idx+2] = fg
+        mask_pixels[idx+3] = 1.0
 
     return mask_pixels
 
@@ -236,50 +236,50 @@ def load_textures(context, filepath, brightness_adjust):
             # convert the paletized pixels into regular rgba pixels
             # note that i is fiddled with in order to reverse Y
             pixels = []
-            # lists containing indices of fullbright and transparent pixels
-            fullbright = []
-            transparent = []
+            fullbright = [] # list containing indices of fullbright pixels
             is_transparent = miptex_name.startswith(transparent_prefix)
+            is_emissive = (miptex_name.startswith(liquid_prefix) or miptex_name.startswith(sky_prefix))
+            create_mask = (is_emissive is False and miptex_name not in ignored_texnames)
 
             for y in reversed(range(miptex.height)):
                 i = miptex.width * y
                 for x in range(miptex.width):
                     idx = i + x
-                    c = pixels_pal[idx] * 3
+                    c = pixels_pal[idx]
+
+                    # masks
+                    alpha = 1.0
+                    if create_mask:
+                        if is_transparent:
+                            if c == transparent_index:
+                                alpha = 0.0
+                            elif c >= fullbright_index:
+                                fullbright.append(idx)
+                        elif c >= fullbright_index:
+                            fullbright.append(idx)
+
+                    c *= 3
                     pixels.append(colors[c])    # red
                     pixels.append(colors[c+1])  # green
                     pixels.append(colors[c+2])  # blue
-                    pixels.append(1.0)          # alpha
-
-                    # masks
-                    if idx >= fullbright_index:
-                        fullbright.append[idx]
-                    if is_transparent && idx == transparent_index:
-                        transparent.append[idx]
+                    pixels.append(alpha)        # alpha
 
             # create an image and save it
             image = bpy.data.images.new(miptex_name, width=miptex.width, height=miptex.height)
             image.pixels = pixels
-            texture_item = dict(name=miptex_name, width=miptex.width, height=miptex.height, image=image)
+            texture_item = dict(name=miptex_name, width=miptex.width, height=miptex.height,
+                image=image, is_emissive=is_emissive, use_alpha=is_transparent)
 
             # generate masks if required
+            num_pixels = miptex.width * miptex.height
             if len(fullbright) > 0:
-                mask = bpy.data.images.new(miptex_name + "_bright", width=miptex.width, height=miptex.height)
-                mask.pixels = generate_mask(fullbright, len(pixels))
-                texture_item['fullbright_mask'] = mask
-            if is_transparent && len(transparent) > 0:
-                mask = bpy.data.images.new(miptex_name + "_trans", width=miptex.width, height=miptex.height)
-                mask.pixels = generate_mask(transparent, len(pixels))
-                texture_item['transparent_mask'] = mask
-
+                texture_item['is_emissive'] = True
+                if len(fullbright) < num_pixels: # no mask if all pixels are fullbright
+                    mask = bpy.data.images.new(miptex_name + "_emission", width=miptex.width, height=miptex.height)
+                    mask.pixels = generate_mask(fullbright, num_pixels, black_background=True)
+                    texture_item['fullbright_mask'] = mask
             texture_data.append(texture_item)
-            
-            # image.filepath_raw = "/tmp/%s.png" % miptex_name
-            # image.file_format = 'PNG'
-            # image.save()
 
-        # used by the import_bsp function to set texture mapping for faces
-        # and optionally to create materials in the scene
         return texture_data
 
 
@@ -398,9 +398,9 @@ def camera_add(entity, scale):
 
 
 def create_materials(texture_data, options):
-    for texture in texture_data:
-        name = texture['name']
-        image = texture['image']
+    for texture_entry in texture_data:
+        name = texture_entry['name']
+        image = texture_entry['image']
         if image == 0 or (options['remove_hidden'] is True and name in ignored_texnames):
             continue
         
@@ -417,12 +417,23 @@ def create_materials(texture_data, options):
         mat.diffuse_color = [uniform(0.1, 1.0), uniform(0.1, 1.0), uniform(0.1, 1.0), 1.0]
         # set up node tree
         node_tree = mat.node_tree
-        shader_node = node_tree.nodes['Principled BSDF']
-        shader_node.inputs['Specular'].default_value = 0.0
+        principled_shader = node_tree.nodes['Principled BSDF']
+        principled_shader.inputs['Specular'].default_value = 0.0
         image_node = node_tree.nodes.new('ShaderNodeTexImage')
         image_node.image = image
+        image_node.interpolation = 'Closest'
         image_node.location = [-256.0, 300.0]
-        node_tree.links.new(image_node.outputs['Color'], shader_node.inputs['Base Color'])
+        node_tree.links.new(image_node.outputs['Color'], principled_shader.inputs['Base Color'])
+        # set up transparent textures
+        if texture_entry['use_alpha']:
+            mat.blend_method = 'CLIP' # Eevee material setting
+            output_node = node_tree.nodes['Material Output']
+            mix_shader = node_tree.nodes.new('ShaderNodeMixShader')
+            trans_shader = node_tree.nodes.new('ShaderNodeBsdfTransparent')
+            node_tree.links.new(image_node.outputs['Alpha'], mix_shader.inputs[0])
+            node_tree.links.new(trans_shader.outputs[0], mix_shader.inputs[1])
+            node_tree.links.new(principled_shader.outputs[0], mix_shader.inputs[2])
+            node_tree.links.new(mix_shader.outputs[0], output_node.inputs['Surface'])
 
 
 def import_bsp(context, filepath, options):
