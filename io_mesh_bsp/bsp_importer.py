@@ -388,7 +388,7 @@ def import_bsp(context, filepath, options):
         # TODO:
         # in order to handle bsp2 files, we need to check the version number here
         # and switch to bsp2 format data structures if the file is bsp2.
-        bsp2 = True if header.version == 844124994 # magic number of 'BSP2' 
+        bsp2 = (header.version == 844124994) # magic number of 'BSP2' 
 
         num_models = int(header.models_size / struct.calcsize(fmt_BSPModel))
         num_verts = int(header.verts_size / struct.calcsize(fmt_BSPVertex))
