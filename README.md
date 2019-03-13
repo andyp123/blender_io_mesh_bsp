@@ -15,7 +15,7 @@ working.
 ![Imported level (apdm3)](https://raw.githubusercontent.com/andyp123/blender_io_mesh_bsp/master/README_img/apdm3.png)
 
 ## Installation
-1. Download the script from GitHub by clicking [here](https://github.com/andyp123/blender_io_mesh_bsp/releases/download/v0.0.9/io_mesh_bsp_v009.zip).
+1. Download the script from GitHub by clicking [here](https://github.com/andyp123/blender_io_mesh_bsp/releases/download/v1.0/io_mesh_bsp_v1.zip).
 2. In Blender, open Preferences (Edit > Preferences) and switch to the Add-ons section.
 3. Select 'Install Add-on from file...' and select the 'io_mesh_bsp.zip' file that you downloaded.
 4. Search for the add-on in the list (enter 'bsp' to quickly find it) and enable it.
@@ -27,9 +27,9 @@ File > Import > Quake BSP (.bsp). Selecting this option will open the file brows
 and allow you to select a file to load. Before loading the file, you can tweak some
 options to change how the BSP will be imported into Blender.
 
-### Scale (default: 0.05)
+### Scale (default: 0.03125)
 Changes the size of the imported geometry. The size of a unit in Quake is not the
-same as in Blender. 32 units in Quake is approximately 1m in Blender, so setting
+same as in Blender. Scale is set so that 32 units in Quake is 1m in Blender, so setting
 scale to 1 will make everything huge.
 
 ### Create Materials (default: On)
