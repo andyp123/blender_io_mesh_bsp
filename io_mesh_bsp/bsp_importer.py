@@ -47,7 +47,7 @@ BSPHeader = namedtuple('BSPHeader',
     "ledges_ofs,    ledges_size,"
     "models_ofs,    models_size")
     )
-fmt_BSPHeader = '<31i'
+fmt_BSPHeader = '<31I'
 
 BSPModel = namedtuple('BSPModel',
     ("bbox_min_x,  bbox_min_y,  bbox_min_z,"
@@ -58,7 +58,7 @@ BSPModel = namedtuple('BSPModel',
     "face_id,"
     "face_num")
     )
-fmt_BSPModel = '<9f7i'
+fmt_BSPModel = '<9f7I'
 
 BSPFace = namedtuple('BSPFace',
     ("plane_id,"
@@ -174,13 +174,16 @@ def load_palette(filepath, brightness_adjust):
         return colors
 
 
-def generate_mask(fg_indices, num_pixels, black_background=True):
+def generate_mask(fg_indices, width, height, black_background=True):
     fg = 1.0 if black_background else 0.0
     bg = 0.0 if black_background else 1.0
 
+    num_pixels = width * height
     mask_pixels = [bg] * (num_pixels * 4)
     for i in fg_indices:
-        idx = i * 4
+        x = i % width
+        y = (height - 1) - int((i - x) / width) # reverse y
+        idx = (width * y + x) * 4
         mask_pixels[idx] = fg
         mask_pixels[idx+1] = fg
         mask_pixels[idx+2] = fg
@@ -189,7 +192,7 @@ def generate_mask(fg_indices, num_pixels, black_background=True):
     return mask_pixels
 
 
-def load_textures(context, filepath, brightness_adjust):
+def load_textures(context, filepath, brightness_adjust, load_miptex=True):
     with open(filepath, 'rb') as file:
         # read file header
         header_data = file.read(struct.calcsize(fmt_BSPHeader))
@@ -223,14 +226,22 @@ def load_textures(context, filepath, brightness_adjust):
                     break
             print_debug("[%d] \'%s\' (%dx%d %dbytes)\n" % (miptex_id, miptex_name, miptex.width, miptex.height, miptex_size))
 
+            texture_item = dict(name=miptex_name, width=miptex.width, height=miptex.height,
+                image=None, mask=None, is_emissive=False, use_alpha=False)
+
+            # Only save the basic texture information
+            if not load_miptex:
+                texture_data.append(texture_item)
+                continue
+
             # get the paletized image pixels
             # if the miptex list is corrupted, make an empty texture to keep id's in order
             try:
                 file.seek(header.miptex_ofs + ofs + miptex.ofs1)
                 pixels_pal = struct.unpack('<%dB' % miptex_size, file.read(miptex_size))
             except:
-                texture_data.append(dict(name=miptex_name, width=0, height=0, image=0))
-                print_debug("seek failed")
+                texture_data.append(texture_item)
+                print_debug("Texture data seek failed for '%s'" % (miptex_name))
                 continue
 
             # convert the paletized pixels into regular rgba pixels
@@ -267,8 +278,9 @@ def load_textures(context, filepath, brightness_adjust):
             # create an image and save it
             image = bpy.data.images.new(miptex_name, width=miptex.width, height=miptex.height)
             image.pixels = pixels
-            texture_item = dict(name=miptex_name, width=miptex.width, height=miptex.height,
-                image=image, is_emissive=is_emissive, use_alpha=is_transparent)
+            texture_item['image'] = image
+            texture_item['is_emissive'] = is_emissive
+            texture_item['use_alpha'] = is_transparent
 
             # generate masks if required
             num_pixels = miptex.width * miptex.height
@@ -276,8 +288,8 @@ def load_textures(context, filepath, brightness_adjust):
                 texture_item['is_emissive'] = True
                 if len(fullbright) < num_pixels: # no mask if all pixels are fullbright
                     mask = bpy.data.images.new(miptex_name + "_emission", width=miptex.width, height=miptex.height)
-                    mask.pixels = generate_mask(fullbright, num_pixels, black_background=True)
-                    texture_item['fullbright_mask'] = mask
+                    mask.pixels = generate_mask(fullbright, miptex.width, miptex.height, black_background=True)
+                    texture_item['mask'] = mask
             texture_data.append(texture_item)
 
         return texture_data
@@ -291,7 +303,13 @@ def get_entity_data(filepath, entities_ofs, entities_size):
     with open(filepath, 'rb') as file:
         file.seek(entities_ofs)
         entity_lump = file.read(entities_size)
-        lines = entity_lump.decode('ascii').splitlines()
+        try: # There is a problem when reading the entity lump of bsp2 files
+            entity_text = entity_lump.decode('ascii')
+            del entity_lump
+        except:
+            return entities
+        lines = entity_text.splitlines()
+        del entity_text
 
         i = 0
         num_lines = len(lines)
@@ -302,10 +320,11 @@ def get_entity_data(filepath, entities_ofs, entities_size):
             if lines[i].startswith(start_char):
                 i += 1
                 entity = {}
-                while not lines[i].startswith(end_char):
+                while i < num_lines and not lines[i].startswith(end_char):
                     # split '"classname" "info_player_start"' into key and value
                     kv = [s for s in lines[i].split('"') if s != '' and s != ' ']
-                    entity[kv[0]] = kv[1]
+                    if len(kv) == 2:
+                        entity[kv[0]] = kv[1]
                     i += 1
                 if 'classname' in entity and 'origin' in entity:
                     entities.append(entity)
@@ -400,39 +419,75 @@ def camera_add(entity, scale):
 def create_materials(texture_data, options):
     for texture_entry in texture_data:
         name = texture_entry['name']
-        image = texture_entry['image']
-        if image == 0 or (options['remove_hidden'] is True and name in ignored_texnames):
+        if (options['remove_hidden'] is True and name in ignored_texnames):
             continue
-        
-        # pack image data in .blend
-        image.pack(as_png = True)
-        # create texture from image
-        texture = bpy.data.textures.new(name, type='IMAGE')
-        texture.image = image
-        texture.use_alpha = False
+
         # create material
         mat = bpy.data.materials.new(name)
         mat.preview_render_type = 'CUBE'
         mat.use_nodes = True
         mat.diffuse_color = [uniform(0.1, 1.0), uniform(0.1, 1.0), uniform(0.1, 1.0), 1.0]
+
+        image = texture_entry['image']
+        mask = texture_entry['mask']
+
+        # There are no images for bsp 30 (Half-Life format)
+        if image is None:
+            continue
+
+        # pack image data in .blend
+        image.pack(as_png=True)
+        # create texture from image
+        texture = bpy.data.textures.new(name, type='IMAGE')
+        texture.image = image
+        texture.use_alpha = texture_entry['use_alpha']
+
+        # pack mask texture if there is one
+        if mask is not None:
+            mask.pack(as_png=True)
+            mask_texture = bpy.data.textures.new(name + '_emission', type='IMAGE')
+            mask_texture.image = mask
+            mask_texture.use_alpha = False
+
         # set up node tree
         node_tree = mat.node_tree
-        principled_shader = node_tree.nodes['Principled BSDF']
-        principled_shader.inputs['Specular'].default_value = 0.0
+        main_shader = node_tree.nodes['Principled BSDF']
+        output_node = node_tree.nodes['Material Output']
+        node_tree.nodes.remove(main_shader) # Replace with Diffuse
+        if texture_entry['is_emissive'] and mask is None:
+            main_shader = node_tree.nodes.new('ShaderNodeEmission')
+        else:
+            main_shader = node_tree.nodes.new('ShaderNodeBsdfDiffuse')
+
         image_node = node_tree.nodes.new('ShaderNodeTexImage')
         image_node.image = image
         image_node.interpolation = 'Closest'
         image_node.location = [-256.0, 300.0]
-        node_tree.links.new(image_node.outputs['Color'], principled_shader.inputs['Base Color'])
+        node_tree.links.new(image_node.outputs['Color'], main_shader.inputs[0])
+
+        # emission mask shader
+        if mask is not None:
+            mask_node = node_tree.nodes.new('ShaderNodeTexImage')
+            mask_node.image = mask
+            mask_node.interpolation = 'Closest'
+            mask_mix_shader = node_tree.nodes.new('ShaderNodeMixShader')
+            mask_emission_shader = node_tree.nodes.new('ShaderNodeEmission')
+            node_tree.links.new(image_node.outputs['Color'], mask_emission_shader.inputs[0])
+            node_tree.links.new(mask_node.outputs['Color'], mask_mix_shader.inputs[0])
+            node_tree.links.new(main_shader.outputs[0], mask_mix_shader.inputs[1])
+            node_tree.links.new(mask_emission_shader.outputs[0], mask_mix_shader.inputs[2])
+            main_shader = mask_mix_shader
+
+        node_tree.links.new(main_shader.outputs[0], output_node.inputs['Surface'])
+
         # set up transparent textures
         if texture_entry['use_alpha']:
             mat.blend_method = 'CLIP' # Eevee material setting
-            output_node = node_tree.nodes['Material Output']
             mix_shader = node_tree.nodes.new('ShaderNodeMixShader')
             trans_shader = node_tree.nodes.new('ShaderNodeBsdfTransparent')
             node_tree.links.new(image_node.outputs['Alpha'], mix_shader.inputs[0])
             node_tree.links.new(trans_shader.outputs[0], mix_shader.inputs[1])
-            node_tree.links.new(principled_shader.outputs[0], mix_shader.inputs[2])
+            node_tree.links.new(main_shader.outputs[0], mix_shader.inputs[2])
             node_tree.links.new(mix_shader.outputs[0], output_node.inputs['Surface'])
 
 
@@ -482,7 +537,7 @@ def import_bsp(context, filepath, options):
     # TODO: Gracefully handle case of no image data contained in bsp (e.g. bsp 30)
     # load texture data (name, width, height, image)
     print_debug("-- LOADING TEXTURES --")
-    texture_data = load_textures(context, filepath, options['brightness_adjust'])
+    texture_data = load_textures(context, filepath, options['brightness_adjust'], (header.version is not 30))
     if options['create_materials']:
         create_materials(texture_data, options)
 
