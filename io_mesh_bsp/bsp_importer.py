@@ -303,8 +303,8 @@ def get_entity_data(filepath, entities_ofs, entities_size):
     with open(filepath, 'rb') as file:
         file.seek(entities_ofs)
         entity_lump = file.read(entities_size)
-        try: # There is a problem when reading the entity lump of bsp2 files
-            entity_text = entity_lump.decode('ascii')
+        try: # cp437 is extended ascii used frequently for map title decoration etc.
+            entity_text = entity_lump.decode('cp437')
             del entity_lump
         except:
             return entities
