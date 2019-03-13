@@ -653,10 +653,11 @@ def import_bsp(context, filepath, options):
                 obj = entity_add(entity, scale)
                 added_objects.append(obj)
 
-        for obj in added_objects:
-            obj.select_set(True)
-        bpy.ops.object.move_to_collection(collection_index=0, is_new=True, new_collection_name=map_name + "_entities")
-        bpy.ops.object.select_all(action='DESELECT')
+        if len(added_objects) > 0:
+            for obj in added_objects:
+                obj.select_set(True)
+            bpy.ops.object.move_to_collection(collection_index=0, is_new=True, new_collection_name=map_name + "_entities")
+            bpy.ops.object.select_all(action='DESELECT')
 
         if len(added_lights) > 0:
             for obj in added_lights:
