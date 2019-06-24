@@ -436,7 +436,7 @@ def create_materials(texture_data, options):
             continue
 
         # pack image data in .blend
-        image.pack(as_png=True)
+        image.pack()
         # create texture from image
         texture = bpy.data.textures.new(name, type='IMAGE')
         texture.image = image
@@ -444,7 +444,7 @@ def create_materials(texture_data, options):
 
         # pack mask texture if there is one
         if mask is not None:
-            mask.pack(as_png=True)
+            mask.pack()
             mask_texture = bpy.data.textures.new(name + '_emission', type='IMAGE')
             mask_texture.image = mask
             mask_texture.use_alpha = False
