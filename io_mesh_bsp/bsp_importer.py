@@ -372,8 +372,9 @@ def light_add(entity, scale):
     light = parse_float_safe(entity, 'light', 200)
     light_data = bpy.context.object.data
     light_data.type = 'POINT'
-    light_data.use_nodes = True
-    light_data.node_tree.nodes['Emission'].inputs['Strength'].default_value = light
+    #light_data.use_nodes = True
+    #light_data.node_tree.nodes['Emission'].inputs['Strength'].default_value = light
+    light_data.energy = light
 
     obj = bpy.context.object
     obj.name = entity['classname']
@@ -427,6 +428,7 @@ def create_materials(texture_data, options):
         mat.preview_render_type = 'CUBE'
         mat.use_nodes = True
         mat.diffuse_color = [uniform(0.1, 1.0), uniform(0.1, 1.0), uniform(0.1, 1.0), 1.0]
+        mat.use_backface_culling = True
 
         image = texture_entry['image']
         mask = texture_entry['mask']
