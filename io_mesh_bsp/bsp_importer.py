@@ -513,9 +513,9 @@ def import_bsp(context, filepath, options):
             num_faces = int(header.faces_size / struct.calcsize(fmt_BSPFace))
             num_edges = int(header.edges_size / struct.calcsize(fmt_BSPEdge))
 
-        print_debug("-- IMPORTING BSP --")
-        print_debug("Source file: %s (%d)" % (filepath, header.version))
-        print_debug("bsp contains %d models (faces = %d, edges = %d, verts = %d)" % (num_models, num_faces, num_edges, num_verts))
+        print("-- IMPORTING BSP --")
+        print("Source file: %s (%d)" % (filepath, header.version))
+        print("bsp contains %d models (faces = %d, edges = %d, verts = %d)" % (num_models, num_faces, num_edges, num_verts))
 
         # read models, faces, edges and vertices into buffers
         file.seek(header.models_ofs)
@@ -536,7 +536,7 @@ def import_bsp(context, filepath, options):
 
     # TODO: Gracefully handle case of no image data contained in bsp (e.g. bsp 30)
     # load texture data (name, width, height, image)
-    print_debug("-- LOADING TEXTURES --")
+    print("-- LOADING TEXTURES --")
     texture_data = load_textures(context, filepath, options['brightness_adjust'], (header.version is not 30))
     if options['create_materials']:
         create_materials(texture_data, options)
@@ -557,7 +557,7 @@ def import_bsp(context, filepath, options):
     texinfo_size = struct.calcsize(fmt_BSPTexInfo)
     texinfo_struct = struct.Struct(fmt_BSPTexInfo)
 
-    print_debug("-- LOADING MODELS --")
+    print("-- LOADING MODELS --")
     start_model = 0
     if options['worldspawn_only'] == True:
         end_model = 1
@@ -732,4 +732,4 @@ def import_bsp(context, filepath, options):
                 shading.show_backface_culling = True
                 shading.show_specular_highlight = False
 
-    print_debug("-- IMPORT COMPLETE --")
+    print("-- IMPORT COMPLETE --")
