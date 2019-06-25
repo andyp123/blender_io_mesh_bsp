@@ -149,7 +149,7 @@ def parse_float_safe(obj, key, default=0):
     return default
 
 
-def parse_vec3_safe(obj, key, scale=1):
+def parse_vec3_safe(obj, key, scale=1, default=[0,0,0]):
     if key in obj:
         val = obj[key].split(' ')
         if len(val) is 3:
@@ -159,7 +159,7 @@ def parse_vec3_safe(obj, key, scale=1):
             except ValueError:
                 pass
 
-    return [0, 0, 0]
+    return default
 
 
 def load_palette(filepath, brightness_adjust):
@@ -370,11 +370,13 @@ def light_add(entity, scale):
 
     bpy.ops.object.add(type='LIGHT', location=origin, rotation=angle)
     light = parse_float_safe(entity, 'light', 200)
+    color = parse_vec3_safe(entity, '_color', 1, [255, 255, 255])
     light_data = bpy.context.object.data
     light_data.type = 'POINT'
     #light_data.use_nodes = True
     #light_data.node_tree.nodes['Emission'].inputs['Strength'].default_value = light
     light_data.energy = light
+    light_data.color = [c * 1.0/255.0 for c in color]
 
     obj = bpy.context.object
     obj.name = entity['classname']
