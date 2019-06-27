@@ -334,60 +334,56 @@ def get_entity_data(filepath, entities_ofs, entities_size):
 
 
 def mesh_add(mesh_id):
-    if bpy.context.active_object:
-        bpy.ops.object.mode_set(mode='OBJECT')
-    bpy.ops.object.add(type='MESH', enter_editmode=True)
-    obj = bpy.context.object
-    obj.name = "bsp_model_%d" % mesh_id
-    # obj.show_name = True
-    obj_mesh = obj.data
-    obj_mesh.name = obj.name + "_mesh"
+    name = "bsp_model_%d" % mesh_id
+    mesh_data = bpy.data.meshes.new(name)
+    obj = bpy.data.objects.new(name, mesh_data)
+    
     return obj
 
 
 def entity_add(entity, scale):
-    if bpy.context.active_object:
-        bpy.ops.object.mode_set(mode='OBJECT')
-
+    # Get entity data
     origin = parse_vec3_safe(entity, 'origin', scale)
     angle = [0, 0, 0]
     angle[2] = parse_float_safe(entity, 'angle', 0)
 
-    bpy.ops.object.add(type='EMPTY', location=origin, rotation=angle)
-
-    obj = bpy.context.object
-    obj.name = entity['classname']
+    # Create an empty to represent the entity
+    classname = entity['classname']
+    obj = bpy.data.objects.new(classname)
+    obj.location = origin
+    obj.rotation_euler = angle
+    obj.type = 'EMPTY'
+    obj.empty_display_type = 'PLAIN_AXES'
     obj.show_name = True
+
     return obj
 
 def light_add(entity, scale):
-    if bpy.context.active_object:
-        bpy.ops.object.mode_set(mode='OBJECT')
-
+    # Get entity data
     origin = parse_vec3_safe(entity, 'origin', scale)
     angle = [0, 0, 0]
     angle[2] = parse_float_safe(entity, 'angle', 0)
-
-    bpy.ops.object.add(type='LIGHT', location=origin, rotation=angle)
     light = parse_float_safe(entity, 'light', 200)
     color = parse_vec3_safe(entity, '_color', 1, [255, 255, 255])
-    light_data = bpy.context.object.data
-    light_data.type = 'POINT'
+
+    # Create a light (not yet linked to the scene)
+    classname = entity['classname']
+    light_data = bpy.data.lights.new(classname, 'POINT')
     #light_data.use_nodes = True
     #light_data.node_tree.nodes['Emission'].inputs['Strength'].default_value = light
     light_data.energy = light
     light_data.color = [c * 1.0/255.0 for c in color]
 
-    obj = bpy.context.object
-    obj.name = entity['classname']
+    obj = bpy.data.objects.new(classname, light_data)
+    obj.location = origin
+    obj.rotation_euler = angle
     obj.show_name = True
+
     return obj
 
 
 def camera_add(entity, scale):
-    if bpy.context.active_object:
-        bpy.ops.object.mode_set(mode='OBJECT')
-
+    # Get entity data
     origin = parse_vec3_safe(entity, 'origin', scale)
     angle = [0, 0, 0]
     if 'mangle' in entity:
@@ -402,14 +398,15 @@ def camera_add(entity, scale):
         angle[0] = radians(90)
         angle[2] = radians(z - 90)
 
-    bpy.ops.object.add(type='CAMERA', location=origin, rotation=angle)
-    camera_data = bpy.context.object.data
+    # Create a camera object (not yet linked to the scene)
+    classname = entity['classname']
+    camera_data = bpy.data.cameras.new(classname)
     camera_data.lens = 18 # corresponds to 90 degree FOV
     camera_data.lens_unit = 'FOV' # show as FOV in UI
 
-    classname = entity['classname']
-    obj = bpy.context.object
-    obj.name = classname
+    obj = bpy.data.objects.new(classname, camera_data)
+    obj.location = origin
+    obj.rotation_euler = angle
     obj.show_name = True
 
     # set active scene camera
@@ -496,7 +493,13 @@ def create_materials(texture_data, options):
 
 
 def import_bsp(context, filepath, options):
-    # TODO: Clean this up; Perhaps by loading everything into lists to begin with
+    # Clear selection and reset cursor to prevent weirdness
+    if bpy.context.active_object:
+        bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.select_all(action='DESELECT')
+    bpy.context.scene.cursor.location = ((0,0,0))
+    bpy.context.scene.cursor.rotation_euler = ((0,0,0))
+
     header = 0 # scope header variable outside with block
     bsp2 = False
     with open(filepath, 'rb') as file:
@@ -582,7 +585,8 @@ def import_bsp(context, filepath, options):
         obj.scale.x = scale
         obj.scale.y = scale
         obj.scale.z = scale
-        bm = bmesh.from_edit_mesh(obj.data)
+        bm = bmesh.new()
+
         # create all verts in bsp
         meshVerts = []
         usedVerts = {}
@@ -667,33 +671,29 @@ def import_bsp(context, filepath, options):
             if not usedVerts[vi]:
                 bm.verts.remove(meshVerts[vi])
         # update the mesh with data from the bmesh
-        bmesh.update_edit_mesh(obj.data)
+        bm.to_mesh(obj.data)
+        bm.free()
 
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    # move objects to a new collection
-    bpy.ops.object.select_all(action='DESELECT')
-    for obj in added_objects:
-        obj.select_set(True)
+    # Move objects to a new collection
     map_name = os.path.basename(filepath).split('.')[0]
-    bpy.ops.object.move_to_collection(collection_index=0, is_new=True, new_collection_name=map_name)
+    map_collection = bpy.data.collections.new(map_name)
+    bpy.context.scene.collection.children.link(map_collection)
 
-    # delete mesh objects with no faces
-    bpy.ops.object.select_all(action='DESELECT')
-    deleted_objects = [obj for obj in added_objects if obj.type == 'MESH' and len(obj.data.polygons) == 0]
-    for obj in deleted_objects:
-        obj.select_set(True)
-    bpy.ops.object.delete()
+    # Add objects only if they have polygons
+    for obj in added_objects:
+        if obj.type == 'MESH' and len(obj.data.polygons) > 0:
+            map_collection.objects.link(obj)
+        else:
+            bpy.data.objects.remove(obj)
 
     # create entities, lights and cameras
-    bpy.ops.object.select_all(action='DESELECT')
     create_entities = options['create_entities']
     create_lights = options['create_lights']
     create_cameras = options['create_cameras']
     import_all = options['all_entities']
+
     if create_entities or create_cameras or create_lights or import_all:
         scale = options['scale']
-
         entities = get_entity_data(filepath, header.entities_ofs, header.entities_size)
         added_objects = []
         added_lights = []
@@ -713,18 +713,22 @@ def import_bsp(context, filepath, options):
                 added_objects.append(obj)
 
         if len(added_objects) > 0:
+            # Create entities collection and link entities to collection
+            entities_collection = bpy.data.collections.new(map_name + "_entities")
+            bpy.context.scene.collection.children.link(entities_collection)
+
             for obj in added_objects:
-                obj.select_set(True)
-            bpy.ops.object.move_to_collection(collection_index=0, is_new=True, new_collection_name=map_name + "_entities")
-            bpy.ops.object.select_all(action='DESELECT')
+                entities_collection.objects.link(obj)
 
         if len(added_lights) > 0:
-            for obj in added_lights:
-                obj.select_set(True)
-            bpy.ops.object.move_to_collection(collection_index=0, is_new=True, new_collection_name=map_name + "_lights")
-            bpy.ops.object.select_all(action='DESELECT')
+            # Create lights collection and link lights to it
+            lights_collection = bpy.data.collections.new(map_name + "_lights")
+            bpy.context.scene.collection.children.link(lights_collection)
 
-    # set up view
+            for obj in added_lights:
+                lights_collection.objects.link(obj)
+
+    # Set up view
     view_3d_areas = [area for area in bpy.context.screen.areas if area.ui_type == 'VIEW_3D']
     for viewport in view_3d_areas:
         for space in viewport.spaces:
