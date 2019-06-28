@@ -15,9 +15,9 @@ working.
 ![Imported level (apdm3)](https://raw.githubusercontent.com/andyp123/blender_io_mesh_bsp/master/README_img/apdm3.png)
 
 ## Installation
-1. Download the script from GitHub by clicking [here](https://github.com/andyp123/blender_io_mesh_bsp/releases/download/v1.0/io_mesh_bsp_v1.zip).
+1. Download the latest release from GitHub by clicking [here](https://github.com/andyp123/blender_io_mesh_bsp/releases/).
 2. In Blender, open Preferences (Edit > Preferences) and switch to the Add-ons section.
-3. Select 'Install Add-on from file...' and select the 'io_mesh_bsp.zip' file that you downloaded.
+3. Select 'Install Add-on from file...' and select the file that you downloaded.
 4. Search for the add-on in the list (enter 'bsp' to quickly find it) and enable it.
 5. Save the preferences if you would like the script to always be enabled.
 
