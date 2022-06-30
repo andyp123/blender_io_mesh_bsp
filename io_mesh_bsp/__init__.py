@@ -24,11 +24,11 @@ if "bpy" in locals():
 bl_info = {
     "name": "Import Quake BSP format",
     "author": "Andrew Palmer (with contributions from Ian Cunningham)",
-    "version": (1, 1),
+    "version": (1, 15),
     "blender": (2, 80, 0),
     "location": "File > Import > Quake BSP (.bsp)",
     "description": "Import geometry and materials from a Quake 1 BSP file.",
-    "wiki_url": "https://github.com/andyp123/blender_io_mesh_bsp",
+    "doc_url": "https://github.com/andyp123/blender_io_mesh_bsp",
     "category": "Import-Export",
 }
 
@@ -56,9 +56,9 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
     scale: FloatProperty(
         name="Scale",
         description="Adjust the size of the imported geometry.",
-        min=0.0, max=1.0,
         soft_min=0.0, soft_max=1.0,
         default=0.03125, # 1 Meter = 32 Quake units
+        # Alternatively could use 0.381 > 8ft = 2.4384m = 64 Quake units, but would be off grid
         )
 
     create_materials: BoolProperty(
@@ -73,11 +73,11 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
         default=True,
         )
 
-    brightness_adjust: FloatProperty(
-        name="Texture Brightness",
-        description="Adjust the brightness of imported textures.",
-        min=-1.0, max=1.0,
-        default=0.0,
+    light_scale: FloatProperty(
+        name="Light Scale",
+        description="Scale the brightness of imported lights.",
+        min=0.0, soft_max=10.0,
+        default=1.0,
         )
 
     worldspawn_only: BoolProperty(
@@ -116,14 +116,14 @@ class BSPImporter(bpy.types.Operator, ImportHelper):
             'scale' : self.scale,
             'create_materials' : self.create_materials,
             'remove_hidden' : self.remove_hidden,
-            'brightness_adjust' : self.brightness_adjust,
+            'light_scale' : self.light_scale,
             'worldspawn_only': self.worldspawn_only,
             'create_lights': self.create_lights,
             'create_cameras': self.create_cameras,
             'create_entities': self.create_entities,
             'all_entities': self.all_entities,
             }
-        bsp_importer.import_bsp(context, self.filepath, options)
+        bsp_importer.import_bsp(self, context, self.filepath, options)
         print("Elapsed time: %.2fs" % (time.time() - time_start))
         return {'FINISHED'}
 

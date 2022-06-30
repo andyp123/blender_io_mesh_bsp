@@ -152,7 +152,7 @@ def parse_float_safe(obj, key, default=0):
 def parse_vec3_safe(obj, key, scale=1, default=[0,0,0]):
     if key in obj:
         val = obj[key].split(' ')
-        if len(val) is 3:
+        if len(val) == 3:
             try:
                 vec = [float(i) * scale for i in val]
                 return vec
@@ -162,14 +162,10 @@ def parse_vec3_safe(obj, key, scale=1, default=[0,0,0]):
     return default
 
 
-def load_palette(filepath, brightness_adjust):
+def load_palette(filepath):
     with open(filepath, 'rb') as file:
         colors_byte = struct.unpack('<768B', file.read(768))
         colors = [float(c)/255.0 for c in colors_byte]
-
-        # adjust palette brightness
-        if brightness_adjust != 0.0:
-            colors = [max(0.0, min(c + brightness_adjust, 1.0)) for c in colors]
 
         return colors
 
@@ -192,7 +188,7 @@ def generate_mask(fg_indices, width, height, black_background=True):
     return mask_pixels
 
 
-def load_textures(context, filepath, brightness_adjust, load_miptex=True):
+def load_textures(context, filepath, load_miptex=True):
     with open(filepath, 'rb') as file:
         # read file header
         header_data = file.read(struct.calcsize(fmt_BSPHeader))
@@ -205,7 +201,7 @@ def load_textures(context, filepath, brightness_adjust, load_miptex=True):
 
         # load the palette colours (will be converted to RGB float format)
         script_path = os.path.dirname(os.path.abspath(__file__)) + "/"
-        colors = load_palette(script_path + "palette.lmp", brightness_adjust)
+        colors = load_palette(script_path + "palette.lmp")
 
         # return a list of texture information and image data
         # entry format: dict(name, width, height, image)
@@ -358,7 +354,7 @@ def entity_add(entity, scale):
 
     return obj
 
-def light_add(entity, scale):
+def light_add(entity, scale, light_scale):
     # Get entity data
     origin = parse_vec3_safe(entity, 'origin', scale)
     angle = [0, 0, 0]
@@ -371,7 +367,7 @@ def light_add(entity, scale):
     light_data = bpy.data.lights.new(classname, 'POINT')
     #light_data.use_nodes = True
     #light_data.node_tree.nodes['Emission'].inputs['Strength'].default_value = light
-    light_data.energy = light
+    light_data.energy = light * light_scale
     light_data.color = [c * 1.0/255.0 for c in color]
 
     obj = bpy.data.objects.new(classname, light_data)
@@ -492,7 +488,7 @@ def create_materials(texture_data, options):
             node_tree.links.new(mix_shader.outputs[0], output_node.inputs['Surface'])
 
 
-def import_bsp(context, filepath, options):
+def import_bsp(self, context, filepath, options):
     # Clear selection and reset cursor to prevent weirdness
     if bpy.context.active_object:
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -502,49 +498,55 @@ def import_bsp(context, filepath, options):
 
     header = 0 # scope header variable outside with block
     bsp2 = False
-    with open(filepath, 'rb') as file:
-        header_data = file.read(struct.calcsize(fmt_BSPHeader))
-        header = BSPHeader._make(struct.unpack(fmt_BSPHeader, header_data))
+    try:
+        with open(filepath, 'rb') as file:
+            header_data = file.read(struct.calcsize(fmt_BSPHeader))
+            header = BSPHeader._make(struct.unpack(fmt_BSPHeader, header_data))
 
-        # TODO:
-        # in order to handle bsp2 files, we need to check the version number here
-        # and switch to bsp2 format data structures if the file is bsp2.
-        bsp2 = (header.version == 844124994) # magic number of 'BSP2' 
+            # TODO:
+            # in order to handle bsp2 files, we need to check the version number here
+            # and switch to bsp2 format data structures if the file is bsp2.
+            bsp2 = (header.version == 844124994) # magic number of 'BSP2' 
 
-        num_models = int(header.models_size / struct.calcsize(fmt_BSPModel))
-        num_verts = int(header.verts_size / struct.calcsize(fmt_BSPVertex))
-        if bsp2:
-            num_faces = int(header.faces_size / struct.calcsize(fmt_BSP2Face))
-            num_edges = int(header.edges_size / struct.calcsize(fmt_BSP2Edge))
-        else:
-            num_faces = int(header.faces_size / struct.calcsize(fmt_BSPFace))
-            num_edges = int(header.edges_size / struct.calcsize(fmt_BSPEdge))
+            num_models = int(header.models_size / struct.calcsize(fmt_BSPModel))
+            num_verts = int(header.verts_size / struct.calcsize(fmt_BSPVertex))
+            if bsp2:
+                num_faces = int(header.faces_size / struct.calcsize(fmt_BSP2Face))
+                num_edges = int(header.edges_size / struct.calcsize(fmt_BSP2Edge))
+            else:
+                num_faces = int(header.faces_size / struct.calcsize(fmt_BSPFace))
+                num_edges = int(header.edges_size / struct.calcsize(fmt_BSPEdge))
 
-        print("-- IMPORTING BSP --")
-        print("Source file: %s (%d)" % (filepath, header.version))
-        print("bsp contains %d models (faces = %d, edges = %d, verts = %d)" % (num_models, num_faces, num_edges, num_verts))
+            print("-- IMPORTING BSP --")
+            print("Source file: %s (%d)" % (filepath, header.version))
+            info_string = "bsp contains %d models (faces = %d, edges = %d, verts = %d)" % (num_models, num_faces, num_edges, num_verts)
+            print(info_string)
+            self.report({'INFO'}, info_string)
 
-        # read models, faces, edges and vertices into buffers
-        file.seek(header.models_ofs)
-        model_data = file.read(header.models_size)
-        file.seek(header.faces_ofs)
-        face_data = file.read(header.faces_size)
-        file.seek(header.edges_ofs) # actual edges
-        edge_data = file.read(header.edges_size)
-        file.seek(header.texinfo_ofs)
-        texinfo_data = file.read(header.texinfo_size)
+            # read models, faces, edges and vertices into buffers
+            file.seek(header.models_ofs)
+            model_data = file.read(header.models_size)
+            file.seek(header.faces_ofs)
+            face_data = file.read(header.faces_size)
+            file.seek(header.edges_ofs) # actual edges
+            edge_data = file.read(header.edges_size)
+            file.seek(header.texinfo_ofs)
+            texinfo_data = file.read(header.texinfo_size)
 
-        # read in the list of edges and store in readable form (flat list of ints)
-        file.seek(header.ledges_ofs)
-        edge_index_list = struct.unpack('<%di' % int(header.ledges_size/4), file.read(header.ledges_size))
-        # do the same with vertices (flat list of floats)
-        file.seek(header.verts_ofs)
-        vertex_list = struct.unpack('<%df' % int(header.verts_size/4), file.read(header.verts_size))
+            # read in the list of edges and store in readable form (flat list of ints)
+            file.seek(header.ledges_ofs)
+            edge_index_list = struct.unpack('<%di' % int(header.ledges_size/4), file.read(header.ledges_size))
+            # do the same with vertices (flat list of floats)
+            file.seek(header.verts_ofs)
+            vertex_list = struct.unpack('<%df' % int(header.verts_size/4), file.read(header.verts_size))
+    except FileNotFoundError:
+        self.report({'ERROR'}, "Error: File '%s' could not be opened" % (filepath))
+        return
 
     # TODO: Gracefully handle case of no image data contained in bsp (e.g. bsp 30)
     # load texture data (name, width, height, image)
     print("-- LOADING TEXTURES --")
-    texture_data = load_textures(context, filepath, options['brightness_adjust'], (header.version is not 30))
+    texture_data = load_textures(context, filepath, (header.version != 30))
     if options['create_materials']:
         create_materials(texture_data, options)
 
@@ -632,10 +634,10 @@ def import_bsp(context, filepath, options):
             # find or append material for this face
             material_id = -1
             if options['create_materials']:
-                try:
-                    material_names = [ m.name for m in obj.data.materials ]
+                material_names = [ m.name for m in obj.data.materials ]
+                if texture_name in obj.data.materials:
                     material_id = material_names.index(texture_name)
-                except: #ValueError:
+                elif texture_name in bpy.data.materials:
                     obj.data.materials.append(bpy.data.materials[texture_name])
                     material_id = len(obj.data.materials) - 1
             # try to add face to mesh
@@ -694,6 +696,7 @@ def import_bsp(context, filepath, options):
 
     if create_entities or create_cameras or create_lights or import_all:
         scale = options['scale']
+        light_scale = options['light_scale']
         entities = get_entity_data(filepath, header.entities_ofs, header.entities_size)
         added_objects = []
         added_lights = []
@@ -703,7 +706,7 @@ def import_bsp(context, filepath, options):
             # this stops lights being imported as empties, even with import_all enabled
             if classname.startswith('light'):
                 if create_lights:
-                    obj = light_add(entity, scale)
+                    obj = light_add(entity, scale, light_scale)
                     added_lights.append(obj)
             elif create_cameras and classname in camera_types:
                 obj = camera_add(entity, scale)
