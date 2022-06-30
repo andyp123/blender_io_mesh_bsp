@@ -7,11 +7,6 @@ Quake BSP files, including textures (which are stored in the BSP) as materials. 
 works with Blender 2.80 and there is an older release for the Blender 2.7x series,
 which can be downloaded by clicking [here](https://github.com/andyp123/blender_io_mesh_bsp/releases/download/v0.0.7/io_mesh_bsp.zip).
 
-__Note:__ You will need Blender 2.80 Beta (available [here](https://builder.blender.org/download/))
-to run this addon. At the time of writing, Blender 2.80 is still in development, and
-this addon may stop functioning due to a change in Blender, but I will try and keep it
-working.
-
 ![Imported level (apdm3)](https://raw.githubusercontent.com/andyp123/blender_io_mesh_bsp/master/README_img/apdm3.png)
 
 ## Installation
@@ -41,9 +36,9 @@ There are some objects in a typical Quake BSP, such as triggers, that are hidden
 game, but included in the BSP. Disable this to import these objects too. Importing
 hidden objects can make it hard to see all the details in the BSP.
 
-### Brightness Adjust (default: 0.0)
-Adjust the value of this setting to increase or decrease the brightness of imported
-textures.
+### Light Scale (default: 1.0)
+Scale the brightness of imported lights. Useful if the geometry scale is different from
+the default setting, or simply to brighten or darken the lighting.
 
 ### Worldspawn Only (default: Off)
 Worldspawn is the name given to the first model inside a BSP file. It represents the
