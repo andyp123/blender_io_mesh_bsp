@@ -424,7 +424,7 @@ def create_materials(texture_data, options):
 
         # create material
         mat = bpy.data.materials.new(name)
-        mat.preview_render_type = 'CUBE'
+        mat.preview_render_type = 'FLAT' # CUBE
         mat.use_nodes = True
         mat.diffuse_color = [uniform(0.1, 1.0), uniform(0.1, 1.0), uniform(0.1, 1.0), 1.0]
         mat.use_backface_culling = True
