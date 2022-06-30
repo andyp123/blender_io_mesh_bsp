@@ -345,10 +345,9 @@ def entity_add(entity, scale):
 
     # Create an empty to represent the entity
     classname = entity['classname']
-    obj = bpy.data.objects.new(classname)
+    obj = bpy.data.objects.new(classname, None) # create an empty
     obj.location = origin
     obj.rotation_euler = angle
-    obj.type = 'EMPTY'
     obj.empty_display_type = 'PLAIN_AXES'
     obj.show_name = True
 
